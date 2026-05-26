@@ -14,7 +14,6 @@ import pages.RequirementPage;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CollaborativeEditTest extends BaseTest {
 
@@ -35,7 +34,6 @@ public class CollaborativeEditTest extends BaseTest {
 
     // ========== 需求规格协同编辑状态 ==========
     @Test
-    @Order(1860)
     @DisplayName("GNYL_186: 共享模式打开需求规格")
     public void test_GNYL_186() {
         rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
@@ -51,7 +49,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1870)
     @DisplayName("GNYL_187: 关闭共享模式打开的需求规格")
     public void test_GNYL_187() {
         Locator closeIcon = page.locator("[class*='tab'] [class*='close'], .el-tabs__item .el-icon-close").first();
@@ -65,7 +62,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1880)
     @DisplayName("GNYL_188: 独占模式打开需求规格")
     public void test_GNYL_188() {
         rPage.rightClickTreeNode(TestConstants.REQ_NAME2);
@@ -81,7 +77,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1890)
     @DisplayName("GNYL_189: 关闭独占模式打开的需求规格")
     public void test_GNYL_189() {
         Locator closeIcon = page.locator("[class*='tab'] [class*='close'], .el-tabs__item .el-icon-close").first();
@@ -95,7 +90,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1900)
     @DisplayName("GNYL_190: 只读模式打开需求规格")
     public void test_GNYL_190() {
         rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
@@ -111,7 +105,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1910)
     @DisplayName("GNYL_191: 关闭只读模式打开的需求规格")
     public void test_GNYL_191() {
         Locator closeIcon = page.locator("[class*='tab'] [class*='close'], .el-tabs__item .el-icon-close").first();
@@ -125,7 +118,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1920)
     @DisplayName("GNYL_192: 需求规格解锁")
     public void test_GNYL_192() {
         rPage.rightClickTreeNode(TestConstants.REQ_NAME2);
@@ -136,7 +128,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1930)
     @DisplayName("GNYL_193: 冻结需求规格")
     public void test_GNYL_193() {
         Locator statusTag = page.getByText("工作中").first();
@@ -152,7 +143,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1940)
     @DisplayName("GNYL_194: 恢复需求规格工作")
     public void test_GNYL_194() {
         Locator statusTag = page.getByText("冻结").first();
@@ -169,7 +159,6 @@ public class CollaborativeEditTest extends BaseTest {
 
     // ========== 需求协同编辑 - 标题/正文 ==========
     @Test
-    @Order(1950)
     @DisplayName("GNYL_195: 编辑不超过500字符的标题")
     public void test_GNYL_195() {
         rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
@@ -196,7 +185,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1960)
     @DisplayName("GNYL_196: 编辑超过500字符的标题")
     public void test_GNYL_196() {
         rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
@@ -230,7 +218,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1970)
     @DisplayName("GNYL_197: 编辑不超过500字符的正文")
     public void test_GNYL_197() {
         openEditorAndClickContent();
@@ -244,7 +231,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1980)
     @DisplayName("GNYL_198: 编辑超过500字符的正文")
     public void test_GNYL_198() {
         openEditorAndClickContent();
@@ -264,7 +250,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(1990)
     @DisplayName("GNYL_199: 需求加锁")
     public void test_GNYL_199() {
         rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
@@ -283,7 +268,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2000)
     @DisplayName("GNYL_200: 需求重复解锁")
     public void test_GNYL_200() {
         page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first()
@@ -302,7 +286,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2010)
     @DisplayName("GNYL_201: 需求解锁")
     public void test_GNYL_201() {
         page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first()
@@ -329,7 +312,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2020)
     @DisplayName("GNYL_202: 正文修改字号")
     public void test_GNYL_202() {
         openEditorAndClickContent();
@@ -343,7 +325,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2030)
     @DisplayName("GNYL_203: 标题修改字号")
     public void test_GNYL_203() {
         openEditorAndClickContent();
@@ -361,7 +342,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2040)
     @DisplayName("GNYL_204: 粗体设置")
     public void test_GNYL_204() {
         openEditorAndClickContent();
@@ -373,7 +353,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2050)
     @DisplayName("GNYL_205: 取消粗体设置")
     public void test_GNYL_205() {
         openEditorAndClickContent();
@@ -387,7 +366,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2060)
     @DisplayName("GNYL_206: 清除格式")
     public void test_GNYL_206() {
         openEditorAndClickContent();
@@ -399,7 +377,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2070)
     @DisplayName("GNYL_207: 修改字体颜色")
     public void test_GNYL_207() {
         openEditorAndClickContent();
@@ -413,7 +390,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2080)
     @DisplayName("GNYL_208: 添加背景色")
     public void test_GNYL_208() {
         openEditorAndClickContent();
@@ -427,7 +403,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2090)
     @DisplayName("GNYL_209: 清除背景色")
     public void test_GNYL_209() {
         openEditorAndClickContent();
@@ -439,7 +414,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2100)
     @DisplayName("GNYL_210: 插入图片")
     public void test_GNYL_210() {
         openEditorAndClickContent();
@@ -453,16 +427,13 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2110)
     @DisplayName("GNYL_211: 删除图片")
     public void test_GNYL_211() {
         openEditorAndClickContent();
 
-        // 先插入一张图片，然后选中删除
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("图片").setExact(true)).click();
         page.waitForTimeout(500);
 
-        // 尝试点击图片（如果有已上传的图片）
         Locator img = page.locator(".w-e-text-container img, [contenteditable='true'] img").first();
         if (img.isVisible()) {
             img.click();
@@ -476,7 +447,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2120)
     @DisplayName("GNYL_212: 插入表格")
     public void test_GNYL_212() {
         openEditorAndClickContent();
@@ -492,7 +462,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2130)
     @DisplayName("GNYL_213: 回车插入文本段落")
     public void test_GNYL_213() {
         openEditorAndClickContent();
@@ -504,12 +473,10 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2140)
     @DisplayName("GNYL_214: 设置表头(下方工具栏)")
     public void test_GNYL_214() {
         openEditorAndClickContent();
 
-        // 先插入一个表格
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("表格").setExact(true)).click();
         page.waitForTimeout(300);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("插入表格")).click();
@@ -517,7 +484,6 @@ public class CollaborativeEditTest extends BaseTest {
         page.locator("tr:nth-child(2) > td:nth-child(1)").click();
         page.waitForTimeout(300);
 
-        // 尝试点击"设置表头"
         Locator headerBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("设置表头"));
         if (headerBtn.isVisible()) {
             headerBtn.click();
@@ -529,7 +495,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2150)
     @DisplayName("GNYL_215: 设置表头(上方工具栏)")
     public void test_GNYL_215() {
         openEditorAndClickContent();
@@ -541,7 +506,6 @@ public class CollaborativeEditTest extends BaseTest {
         page.locator("tr:nth-child(2) > td:nth-child(1)").click();
         page.waitForTimeout(300);
 
-        // wangEditor table上方工具栏 — 可能在Table组件弹出菜单中
         Locator upperBar = page.locator("[class*='table-toolbar'], [class*='table-bar'], .w-e-table-toolbar").first();
         if (upperBar.isVisible()) {
             Locator headerBtnUp = upperBar.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("设置表头"));
@@ -558,7 +522,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2160)
     @DisplayName("GNYL_216: 宽度自适应")
     public void test_GNYL_216() {
         openEditorAndClickContent();
@@ -581,7 +544,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2170)
     @DisplayName("GNYL_217: 插入行(下方工具栏)")
     public void test_GNYL_217() {
         openEditorAndClickContent();
@@ -604,7 +566,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2180)
     @DisplayName("GNYL_218: 插入行(上方工具栏)")
     public void test_GNYL_218() {
         openEditorAndClickContent();
@@ -632,7 +593,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2190)
     @DisplayName("GNYL_219: 删除行(下方工具栏)")
     public void test_GNYL_219() {
         openEditorAndClickContent();
@@ -655,7 +615,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2200)
     @DisplayName("GNYL_220: 删除行(上方工具栏)")
     public void test_GNYL_220() {
         openEditorAndClickContent();
@@ -683,7 +642,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2210)
     @DisplayName("GNYL_221: 插入列(下方工具栏)")
     public void test_GNYL_221() {
         openEditorAndClickContent();
@@ -706,7 +664,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2220)
     @DisplayName("GNYL_222: 插入列(上方工具栏)")
     public void test_GNYL_222() {
         openEditorAndClickContent();
@@ -734,7 +691,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2230)
     @DisplayName("GNYL_223: 删除列(下方工具栏)")
     public void test_GNYL_223() {
         openEditorAndClickContent();
@@ -757,7 +713,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2240)
     @DisplayName("GNYL_224: 删除列(上方工具栏)")
     public void test_GNYL_224() {
         openEditorAndClickContent();
@@ -785,12 +740,10 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2250)
     @DisplayName("GNYL_225: 删除表格(下方工具栏)")
     public void test_GNYL_225() {
         openEditorAndClickContent();
 
-        // 先插入一个表格，再删除
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("表格").setExact(true)).click();
         page.waitForTimeout(300);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("插入表格")).click();
@@ -807,7 +760,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2260)
     @DisplayName("GNYL_226: 删除表格(上方工具栏)")
     public void test_GNYL_226() {
         openEditorAndClickContent();
@@ -835,7 +787,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2270)
     @DisplayName("GNYL_227: 添加分割线")
     public void test_GNYL_227() {
         openEditorAndClickContent();
@@ -847,7 +798,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2280)
     @DisplayName("GNYL_228: 引用")
     public void test_GNYL_228() {
         openEditorAndClickContent();
@@ -863,12 +813,10 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2290)
     @DisplayName("GNYL_229: 撤销")
     public void test_GNYL_229() {
         openEditorAndClickContent();
 
-        // 先插入分割线，然后撤销
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("分割线")).click();
         page.waitForTimeout(300);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("撤销")).click();
@@ -878,12 +826,10 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2300)
     @DisplayName("GNYL_230: 重做")
     public void test_GNYL_230() {
         openEditorAndClickContent();
 
-        // 插入分割线 → 撤销 → 重做
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("分割线")).click();
         page.waitForTimeout(300);
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("撤销")).click();
@@ -896,10 +842,8 @@ public class CollaborativeEditTest extends BaseTest {
 
     // ========== 需求视图编辑 ==========
     @Test
-    @Order(2310)
     @DisplayName("GNYL_231: 新建视图")
     public void test_GNYL_231() {
-        // 先确保在需求管理页面
         rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
@@ -918,16 +862,13 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2320)
     @DisplayName("GNYL_232: 视图名称必填测试")
     public void test_GNYL_232() {
-        // UI上点击保存无反应（名称空时不提交），通过API验证必填
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
         page.waitForTimeout(300);
         page.getByRole(AriaRole.MENUITEM, new Page.GetByRoleOptions().setName("保存视图")).click();
         page.waitForTimeout(500);
 
-        // 不填写名称，直接点击保存（UI上无反应）
         page.getByRole(AriaRole.CONTENTINFO).getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("保存")).click();
         page.waitForTimeout(500);
 
@@ -935,7 +876,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2330)
     @DisplayName("GNYL_233: 视图名称唯一性测试")
     public void test_GNYL_233() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
@@ -943,9 +883,8 @@ public class CollaborativeEditTest extends BaseTest {
         page.getByRole(AriaRole.MENUITEM, new Page.GetByRoleOptions().setName("保存视图")).click();
         page.waitForTimeout(500);
 
-        // 使用已存在的视图名称
         page.getByLabel("视图名称").click();
-        page.getByLabel("视图名称").fill("123"); // 假设123已存在
+        page.getByLabel("视图名称").fill("123");
         page.getByRole(AriaRole.CONTENTINFO).getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("保存")).click();
         page.waitForTimeout(500);
 
@@ -959,7 +898,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2340)
     @DisplayName("GNYL_234: 视图描述输入验证")
     public void test_GNYL_234() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
@@ -978,20 +916,16 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2350)
     @DisplayName("GNYL_235: 打开标准视图")
     public void test_GNYL_235() {
-        // 先确保在需求管理页面根节点
         rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
         page.waitForTimeout(300);
 
-        // 尝试查看视图列表中的标准视图
         Locator viewList = page.locator("[class*='view-list'], [class*='dropdown'], .el-dropdown-menu").first();
         if (viewList.isVisible()) {
-            // 查找非"保存视图"的菜单项（即已有视图）
             Locator standardView = viewList.locator("span, .el-dropdown-menu__item")
                     .filter(new Locator.FilterOptions().setHasText("标准")).first();
             if (standardView.isVisible()) {
@@ -1007,7 +941,6 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2360)
     @DisplayName("GNYL_236: 打开新建的视图")
     public void test_GNYL_236() {
         rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
@@ -1018,7 +951,6 @@ public class CollaborativeEditTest extends BaseTest {
 
         Locator viewList = page.locator("[class*='view-list'], [class*='dropdown'], .el-dropdown-menu").first();
         if (viewList.isVisible()) {
-            // 查找包含"自动化测试视图"的菜单项
             Locator testView = viewList.locator("span, .el-dropdown-menu__item")
                     .filter(new Locator.FilterOptions().setHasText("自动化测试视图_")).first();
             if (testView.isVisible()) {
@@ -1034,13 +966,11 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2370)
     @DisplayName("GNYL_237: 删除视图")
     public void test_GNYL_237() {
         rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
-        // 视图按钮 → 管理视图
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
         page.waitForTimeout(300);
 
@@ -1061,10 +991,8 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     @Test
-    @Order(2380)
     @DisplayName("GNYL_238: 分屏展示")
     public void test_GNYL_238() {
-        // 先打开两个需求规格（共享模式）
         rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(500);
         page.getByText("打开", new Page.GetByTextOptions().setExact(true)).click();
@@ -1079,7 +1007,6 @@ public class CollaborativeEditTest extends BaseTest {
         page.getByText("共享模式", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(1000);
 
-        // 尝试拖拽页签实现分屏
         Locator tab = page.locator("[class*='tab'], [class*='el-tabs']").first();
         if (tab.isVisible()) {
             Locator tabItem = tab.locator(".el-tabs__item, [class*='tab-item']").first();

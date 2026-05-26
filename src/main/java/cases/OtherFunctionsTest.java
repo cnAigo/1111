@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import pages.RequirementPage;
 import java.nio.file.Paths;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class OtherFunctionsTest extends BaseTest {
 
@@ -173,7 +172,6 @@ public class OtherFunctionsTest extends BaseTest {
 
     // ========== 合作区管理 ==========
     @Test
-    @Order(1001)
     @DisplayName("QTYL_001: 进入合作区管理页面")
     public void test_QTYL_001() {
         navigateToCooperationZone();
@@ -186,7 +184,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1002)
     @DisplayName("QTYL_002: 添加合作区")
     public void test_QTYL_002() {
         navigateToCooperationZone();
@@ -194,12 +191,10 @@ public class OtherFunctionsTest extends BaseTest {
 
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 填写合作区名称
             Locator nameInput = dialog.locator("input").first();
             if (nameInput.isVisible()) {
                 nameInput.fill("合作区_auto_" + System.currentTimeMillis());
             }
-            // 填写编码
             Locator codeInput = dialog.locator("input").nth(1);
             if (codeInput.isVisible()) {
                 codeInput.fill("hzq_" + System.currentTimeMillis());
@@ -213,7 +208,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1003)
     @DisplayName("QTYL_003: 修改合作区")
     public void test_QTYL_003() {
         navigateToCooperationZone();
@@ -221,7 +215,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_003 表格无数据，跳过修改操作");
             return;
         }
-        // 点击第一行的修改按钮
         Locator editBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("修改")).first();
@@ -246,14 +239,12 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1004)
     @DisplayName("QTYL_004: 合作区名称必填测试")
     public void test_QTYL_004() {
         navigateToCooperationZone();
         clickAddButton();
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 不填写名称，直接点确定
             clickDialogConfirm();
             page.waitForTimeout(500);
             Locator errMsg = page.locator(".el-form-item__error, .el-message, .el-message-box").first();
@@ -269,7 +260,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1005)
     @DisplayName("QTYL_005: 合作区编码必填测试")
     public void test_QTYL_005() {
         navigateToCooperationZone();
@@ -295,7 +285,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1006)
     @DisplayName("QTYL_006: 密级必选测试")
     public void test_QTYL_006() {
         navigateToCooperationZone();
@@ -325,7 +314,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1007)
     @DisplayName("QTYL_007: 输入非字母开头的合作区编码")
     public void test_QTYL_007() {
         navigateToCooperationZone();
@@ -350,7 +338,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1008)
     @DisplayName("QTYL_008: 非字母或字母+数字组合的编码")
     public void test_QTYL_008() {
         navigateToCooperationZone();
@@ -375,7 +362,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1009)
     @DisplayName("QTYL_009: 合作区名称空格校验")
     public void test_QTYL_009() {
         navigateToCooperationZone();
@@ -400,14 +386,12 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1010)
     @DisplayName("QTYL_010: 合作区名称重复校验")
     public void test_QTYL_010() {
         navigateToCooperationZone();
         clickAddButton();
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 使用已存在的合作区名称
             Locator nameInput = dialog.locator("input").first();
             if (nameInput.isVisible()) {
                 nameInput.fill("test");
@@ -428,7 +412,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1011)
     @DisplayName("QTYL_011: 合作区编码重复校验")
     public void test_QTYL_011() {
         navigateToCooperationZone();
@@ -439,10 +422,9 @@ public class OtherFunctionsTest extends BaseTest {
             if (nameInput.isVisible()) {
                 nameInput.fill("编码重复测试_" + System.currentTimeMillis());
             }
-            // 尝试使用可能重复的编码
             Locator codeInput = dialog.locator("input").nth(1);
             if (codeInput.isVisible()) {
-                codeInput.fill("test");  // 使用可能已存在的编码
+                codeInput.fill("test");
             }
             clickDialogConfirm();
             page.waitForTimeout(1000);
@@ -456,7 +438,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1012)
     @DisplayName("QTYL_012: 删除有用户的合作区")
     public void test_QTYL_012() {
         navigateToCooperationZone();
@@ -464,7 +445,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_012 表格无数据，跳过");
             return;
         }
-        // 选择合作区 → 删除
         page.locator(".el-table__body-wrapper tbody tr .el-checkbox").first().click();
         page.waitForTimeout(300);
         clickDeleteButton();
@@ -473,7 +453,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (dialog.isVisible()) {
             String msg = dialog.textContent();
             log.info("QTYL_012 删除有用户合作区提示: {}", msg.trim());
-            // 取消删除
             Locator cancelBtn = dialog.locator("button").filter(new Locator.FilterOptions().setHasText("取 消")).first();
             if (cancelBtn.isVisible()) cancelBtn.click();
             page.waitForTimeout(300);
@@ -481,7 +460,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1013)
     @DisplayName("QTYL_013: 删除没有用户的合作区")
     public void test_QTYL_013() {
         navigateToCooperationZone();
@@ -497,7 +475,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (dialog.isVisible()) {
             String msg = dialog.textContent();
             log.info("QTYL_013 删除确认框: {}", msg.trim());
-            // 确认删除
             Locator confirmBtn = dialog.locator("button").filter(new Locator.FilterOptions().setHasText("确 定")).first();
             if (confirmBtn.isVisible()) {
                 confirmBtn.click();
@@ -508,7 +485,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1014)
     @DisplayName("QTYL_014: 存在的合作区名称检索")
     public void test_QTYL_014() {
         navigateToCooperationZone();
@@ -522,7 +498,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1015)
     @DisplayName("QTYL_015: 合作区名称模糊查询")
     public void test_QTYL_015() {
         navigateToCooperationZone();
@@ -532,7 +507,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1016)
     @DisplayName("QTYL_016: 不存在的合作区名称检索")
     public void test_QTYL_016() {
         navigateToCooperationZone();
@@ -547,7 +521,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1017)
     @DisplayName("QTYL_017: 重置")
     public void test_QTYL_017() {
         navigateToCooperationZone();
@@ -563,7 +536,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1018)
     @DisplayName("QTYL_018: 添加用户(合作区人员分配)")
     public void test_QTYL_018() {
         navigateToCooperationZone();
@@ -571,12 +543,10 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_018 表格无数据，跳过");
             return;
         }
-        // 第一行点击"分配人员"或类似操作
         Locator assignBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("分配")).first();
         if (!assignBtn.isVisible()) {
-            // 尝试点击其他可能的按钮
             assignBtn = page.locator(".el-table__body-wrapper tbody tr")
                     .first().locator("td:last-child button, td:last-child span, td:last-child a").first();
         }
@@ -601,7 +571,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1019)
     @DisplayName("QTYL_019: 重复添加用户")
     public void test_QTYL_019() {
         navigateToCooperationZone();
@@ -617,7 +586,6 @@ public class OtherFunctionsTest extends BaseTest {
             page.waitForTimeout(1000);
             Locator dialog = page.locator(".el-dialog").last();
             if (dialog.isVisible()) {
-                // 选择已存在的用户
                 Locator userCheckbox = dialog.locator(".el-checkbox").first();
                 if (userCheckbox.isVisible()) {
                     userCheckbox.click();
@@ -638,7 +606,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1020)
     @DisplayName("QTYL_020: 组织部门选择验证")
     public void test_QTYL_020() {
         navigateToCooperationZone();
@@ -652,7 +619,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (assignBtn.isVisible()) {
             assignBtn.click();
             page.waitForTimeout(1000);
-            // 如果有部门树，选择不同部门
             Locator deptTree = page.locator(".el-tree").first();
             if (deptTree.isVisible()) {
                 Locator deptNode = deptTree.locator(".el-tree-node").first();
@@ -673,7 +639,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1021)
     @DisplayName("QTYL_021: 存在的用户名称检索")
     public void test_QTYL_021() {
         navigateToCooperationZone();
@@ -697,7 +662,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1022)
     @DisplayName("QTYL_022: 不存在的用户名称检索")
     public void test_QTYL_022() {
         navigateToCooperationZone();
@@ -726,7 +690,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1023)
     @DisplayName("QTYL_023: 用户名称模糊搜索")
     public void test_QTYL_023() {
         navigateToCooperationZone();
@@ -750,7 +713,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1024)
     @DisplayName("QTYL_024: 重置")
     public void test_QTYL_024() {
         navigateToCooperationZone();
@@ -774,7 +736,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1025)
     @DisplayName("QTYL_025: 取消授权")
     public void test_QTYL_025() {
         navigateToCooperationZone();
@@ -782,7 +743,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_025 表格无数据，跳过");
             return;
         }
-        // 点击操作栏中的取消授权
         Locator removeBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("取消授权")).first();
@@ -808,7 +768,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1026)
     @DisplayName("QTYL_026: 批量取消授权")
     public void test_QTYL_026() {
         navigateToCooperationZone();
@@ -838,7 +797,6 @@ public class OtherFunctionsTest extends BaseTest {
 
     // ========== 用户管理 ==========
     @Test
-    @Order(1027)
     @DisplayName("QTYL_027: 存在的部门名称检索")
     public void test_QTYL_027() {
         navigateToUserManagement();
@@ -848,7 +806,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1028)
     @DisplayName("QTYL_028: 部门名称模糊查询")
     public void test_QTYL_028() {
         navigateToUserManagement();
@@ -858,7 +815,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1029)
     @DisplayName("QTYL_029: 不存在的部门名称检索")
     public void test_QTYL_029() {
         navigateToUserManagement();
@@ -873,12 +829,10 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1030)
     @DisplayName("QTYL_030: 重置")
     public void test_QTYL_030() {
         navigateToUserManagement();
         fillInputByPlaceholder("部门名称", "公司");
-        // 点击部门搜索框的清除按钮（x）
         Locator clearBtn = page.locator("input[placeholder*='部门名称'] + .el-input__suffix .el-icon-circle-close, input[placeholder*='部门名称'] ~ .el-input__suffix .el-input__clear").first();
         if (clearBtn.isVisible()) {
             clearBtn.click();
@@ -890,11 +844,9 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1031)
     @DisplayName("QTYL_031: 部门选择验证")
     public void test_QTYL_031() {
         navigateToUserManagement();
-        // 点击左侧部门树的节点
         Locator deptTree = page.locator(".el-tree").first();
         if (deptTree.isVisible()) {
             Locator deptNode = deptTree.locator(".el-tree-node").first();
@@ -911,7 +863,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1032)
     @DisplayName("QTYL_032: 存在的用户名称检索")
     public void test_QTYL_032() {
         navigateToUserManagement();
@@ -925,7 +876,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1033)
     @DisplayName("QTYL_033: 不存在的用户名称检索")
     public void test_QTYL_033() {
         navigateToUserManagement();
@@ -940,7 +890,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1034)
     @DisplayName("QTYL_034: 用户名称模糊搜索")
     public void test_QTYL_034() {
         navigateToUserManagement();
@@ -954,7 +903,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1035)
     @DisplayName("QTYL_035: 存在的手机号码检索")
     public void test_QTYL_035() {
         navigateToUserManagement();
@@ -968,7 +916,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1036)
     @DisplayName("QTYL_036: 不存在的手机号码检索")
     public void test_QTYL_036() {
         navigateToUserManagement();
@@ -983,7 +930,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1037)
     @DisplayName("QTYL_037: 手机号码模糊搜索")
     public void test_QTYL_037() {
         navigateToUserManagement();
@@ -997,11 +943,9 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1038)
     @DisplayName("QTYL_038: 存在的状态检索")
     public void test_QTYL_038() {
         navigateToUserManagement();
-        // 选择状态
         Locator statusSelect = page.locator(".el-select").filter(new Locator.FilterOptions().setHasText("状态")).first();
         if (statusSelect.isVisible()) {
             statusSelect.click();
@@ -1017,7 +961,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1039)
     @DisplayName("QTYL_039: 不存在的状态检索")
     public void test_QTYL_039() {
         navigateToUserManagement();
@@ -1025,7 +968,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (statusSelect.isVisible()) {
             statusSelect.click();
             page.waitForTimeout(300);
-            // 选择"停用"状态
             Locator option = page.locator(".el-select-dropdown__item").filter(new Locator.FilterOptions().setHasText("停用")).first();
             if (option.isVisible()) {
                 option.click();
@@ -1042,7 +984,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1040)
     @DisplayName("QTYL_040: 存在的创建时间检索")
     public void test_QTYL_040() {
         navigateToUserManagement();
@@ -1063,7 +1004,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1041)
     @DisplayName("QTYL_041: 不存在的创建时间检索")
     public void test_QTYL_041() {
         navigateToUserManagement();
@@ -1089,7 +1029,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1042)
     @DisplayName("QTYL_042: 组合查询")
     public void test_QTYL_042() {
         navigateToUserManagement();
@@ -1100,7 +1039,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1043)
     @DisplayName("QTYL_043: 重置")
     public void test_QTYL_043() {
         navigateToUserManagement();
@@ -1113,23 +1051,17 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1044)
     @DisplayName("QTYL_044: 新增用户")
     public void test_QTYL_044() {
         navigateToUserManagement();
         clickAddButton();
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 填写新增用户表单
             String suffix = String.valueOf(System.currentTimeMillis()).substring(8);
             Locator inputs = dialog.locator("input:visible");
-            // 用户昵称
             if (inputs.count() > 0) inputs.nth(0).fill("自动测试_" + suffix);
-            // 用户名称
             if (inputs.count() > 1) inputs.nth(1).fill("auto_user_" + suffix);
-            // 密码
             if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
-            // 手机号码
             if (inputs.count() > 3) inputs.nth(3).fill("138" + suffix.substring(0, 8));
 
             clickDialogConfirm();
@@ -1146,17 +1078,14 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1045)
     @DisplayName("QTYL_045: 用户昵称非空校验")
     public void test_QTYL_045() {
         navigateToUserManagement();
         clickAddButton();
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 填写其他字段，留空昵称
             String suffix = String.valueOf(System.currentTimeMillis()).substring(8);
             Locator inputs = dialog.locator("input:visible");
-            // 跳过第一个（昵称），填写用户名称
             if (inputs.count() > 1) inputs.nth(1).fill("auto_empty_" + suffix);
             if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
 
@@ -1173,7 +1102,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1046)
     @DisplayName("QTYL_046: 用户名称非空校验")
     public void test_QTYL_046() {
         navigateToUserManagement();
@@ -1198,7 +1126,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1047)
     @DisplayName("QTYL_047: 用户名称长度校验(不足2位)")
     public void test_QTYL_047() {
         navigateToUserManagement();
@@ -1208,7 +1135,7 @@ public class OtherFunctionsTest extends BaseTest {
             String suffix = String.valueOf(System.currentTimeMillis()).substring(8);
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
-            if (inputs.count() > 1) inputs.nth(1).fill("a");  // 只有1位
+            if (inputs.count() > 1) inputs.nth(1).fill("a");
             if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
 
             clickDialogConfirm();
@@ -1224,7 +1151,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1048)
     @DisplayName("QTYL_048: 用户名称长度校验(2-20位)")
     public void test_QTYL_048() {
         navigateToUserManagement();
@@ -1234,7 +1160,7 @@ public class OtherFunctionsTest extends BaseTest {
             String suffix = String.valueOf(System.currentTimeMillis()).substring(8);
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
-            if (inputs.count() > 1) inputs.nth(1).fill("auto_test_" + suffix);  // 正常长度
+            if (inputs.count() > 1) inputs.nth(1).fill("auto_test_" + suffix);
             if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
 
             clickDialogConfirm();
@@ -1244,7 +1170,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1049)
     @DisplayName("QTYL_049: 用户名称长度校验(超过20位)")
     public void test_QTYL_049() {
         navigateToUserManagement();
@@ -1254,7 +1179,7 @@ public class OtherFunctionsTest extends BaseTest {
             String suffix = String.valueOf(System.currentTimeMillis()).substring(8);
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
-            if (inputs.count() > 1) inputs.nth(1).fill("a".repeat(25));  // 25位，超过20
+            if (inputs.count() > 1) inputs.nth(1).fill("a".repeat(25));
 
             clickDialogConfirm();
             page.waitForTimeout(500);
@@ -1269,7 +1194,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1050)
     @DisplayName("QTYL_050: 用户密码非空校验")
     public void test_QTYL_050() {
         navigateToUserManagement();
@@ -1280,7 +1204,6 @@ public class OtherFunctionsTest extends BaseTest {
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
             if (inputs.count() > 1) inputs.nth(1).fill("auto_" + suffix);
-            // 不填密码
 
             clickDialogConfirm();
             page.waitForTimeout(500);
@@ -1295,7 +1218,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1051)
     @DisplayName("QTYL_051: 用户密码长度校验(不足5位)")
     public void test_QTYL_051() {
         navigateToUserManagement();
@@ -1306,7 +1228,7 @@ public class OtherFunctionsTest extends BaseTest {
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
             if (inputs.count() > 1) inputs.nth(1).fill("auto_" + suffix);
-            if (inputs.count() > 2) inputs.nth(2).fill("1234");  // 4位，不足5
+            if (inputs.count() > 2) inputs.nth(2).fill("1234");
 
             clickDialogConfirm();
             page.waitForTimeout(500);
@@ -1321,7 +1243,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1052)
     @DisplayName("QTYL_052: 用户密码长度校验(5-20位)")
     public void test_QTYL_052() {
         navigateToUserManagement();
@@ -1332,7 +1253,7 @@ public class OtherFunctionsTest extends BaseTest {
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
             if (inputs.count() > 1) inputs.nth(1).fill("auto_" + suffix);
-            if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");  // 正常密码
+            if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
 
             clickDialogConfirm();
             page.waitForTimeout(500);
@@ -1341,7 +1262,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1053)
     @DisplayName("QTYL_053: 用户密码长度校验(超过20位)")
     public void test_QTYL_053() {
         navigateToUserManagement();
@@ -1352,12 +1272,10 @@ public class OtherFunctionsTest extends BaseTest {
             Locator inputs = dialog.locator("input:visible");
             if (inputs.count() > 0) inputs.nth(0).fill("测试昵称_" + suffix);
             if (inputs.count() > 1) inputs.nth(1).fill("auto_" + suffix);
-            // 尝试输入超长密码
             Locator pwdInput = dialog.locator("input[type='password']").first();
             if (pwdInput.isVisible()) {
                 pwdInput.fill("a".repeat(25));
                 page.waitForTimeout(300);
-                // 验证是否被截断到20位
                 String val = pwdInput.inputValue();
                 log.info("QTYL_053 超长密码实际输入长度: {}", val.length());
             }
@@ -1366,7 +1284,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1054)
     @DisplayName("QTYL_054: 用户密码显示明文测试")
     public void test_QTYL_054() {
         navigateToUserManagement();
@@ -1377,12 +1294,10 @@ public class OtherFunctionsTest extends BaseTest {
             if (pwdInput.isVisible()) {
                 pwdInput.fill("Aa123456");
                 page.waitForTimeout(300);
-                // 点击密码可见切换图标
                 Locator eyeIcon = dialog.locator(".el-input__suffix .el-icon, .el-input__icon").first();
                 if (eyeIcon.isVisible()) {
                     eyeIcon.click();
                     page.waitForTimeout(300);
-                    // 切换后输入框类型应变为text
                     Locator textInput = dialog.locator("input[type='text']").last();
                     if (textInput.isVisible()) {
                         log.info("QTYL_054 密码明文显示成功");
@@ -1398,7 +1313,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1055)
     @DisplayName("QTYL_055: 手机号码格式校验(正确)")
     public void test_QTYL_055() {
         navigateToUserManagement();
@@ -1410,7 +1324,6 @@ public class OtherFunctionsTest extends BaseTest {
             if (inputs.count() > 0) inputs.nth(0).fill("测试手机_" + suffix);
             if (inputs.count() > 1) inputs.nth(1).fill("auto_phone_" + suffix);
             if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
-            // 输入正确手机号
             if (inputs.count() > 3) inputs.nth(3).fill("138" + suffix.substring(0, 8));
 
             clickDialogConfirm();
@@ -1420,7 +1333,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1056)
     @DisplayName("QTYL_056: 手机号码格式校验(错误)")
     public void test_QTYL_056() {
         navigateToUserManagement();
@@ -1432,7 +1344,7 @@ public class OtherFunctionsTest extends BaseTest {
             if (inputs.count() > 0) inputs.nth(0).fill("测试错误手机_" + suffix);
             if (inputs.count() > 1) inputs.nth(1).fill("auto_badphone_" + suffix);
             if (inputs.count() > 2) inputs.nth(2).fill("Aa123456");
-            if (inputs.count() > 3) inputs.nth(3).fill("12345");  // 非手机格式
+            if (inputs.count() > 3) inputs.nth(3).fill("12345");
 
             clickDialogConfirm();
             page.waitForTimeout(500);
@@ -1447,7 +1359,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1057)
     @DisplayName("QTYL_057: 邮箱格式校验(正确)")
     public void test_QTYL_057() {
         navigateToUserManagement();
@@ -1459,7 +1370,6 @@ public class OtherFunctionsTest extends BaseTest {
             if (allInputs.count() > 0) allInputs.nth(0).fill("测试邮箱_" + suffix);
             if (allInputs.count() > 1) allInputs.nth(1).fill("auto_email_" + suffix);
             if (allInputs.count() > 2) allInputs.nth(2).fill("Aa123456");
-            // 尝试找到邮箱输入框（如果有）
             Locator emailInput = dialog.locator("input[type='email'], input[placeholder*='邮箱']").first();
             if (emailInput.isVisible()) {
                 emailInput.fill("test@example.com");
@@ -1469,7 +1379,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1058)
     @DisplayName("QTYL_058: 邮箱格式校验(错误)")
     public void test_QTYL_058() {
         navigateToUserManagement();
@@ -1503,23 +1412,19 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1059)
     @DisplayName("QTYL_059: 岗位多选")
     public void test_QTYL_059() {
         navigateToUserManagement();
         clickAddButton();
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 在对话框中找到岗位选择器（如果有）
             Locator postSelect = dialog.locator(".el-select").filter(new Locator.FilterOptions().setHasText("岗位")).first();
             if (!postSelect.isVisible()) {
-                // 尝试找所有下拉框
-                postSelect = dialog.locator(".el-select").nth(1);  // 可能第二个是岗位
+                postSelect = dialog.locator(".el-select").nth(1);
             }
             if (postSelect.isVisible()) {
                 postSelect.click();
                 page.waitForTimeout(500);
-                // 选择第一个选项
                 Locator option = page.locator(".el-select-dropdown__item").first();
                 if (option.isVisible()) {
                     option.click();
@@ -1534,14 +1439,12 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1060)
     @DisplayName("QTYL_060: 岗位删除")
     public void test_QTYL_060() {
         navigateToUserManagement();
         clickAddButton();
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 点击已选岗位的删除按钮（x）
             Locator tagClose = dialog.locator(".el-tag__close, .el-select__tags .el-tag .el-icon-close").first();
             if (tagClose.isVisible()) {
                 tagClose.click();
@@ -1555,7 +1458,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1061)
     @DisplayName("QTYL_061: 角色多选")
     public void test_QTYL_061() {
         navigateToUserManagement();
@@ -1580,7 +1482,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1062)
     @DisplayName("QTYL_062: 角色删除")
     public void test_QTYL_062() {
         navigateToUserManagement();
@@ -1600,16 +1501,13 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1063)
     @DisplayName("QTYL_063: 导入用户(点击上传)")
     public void test_QTYL_063() {
         navigateToUserManagement();
-        // 找"导入"按钮
         Locator importBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("导入")).first();
         if (importBtn.isVisible()) {
             importBtn.click();
             page.waitForTimeout(1000);
-            // 尝试上传文件
             Locator fileInput = page.locator("input[type='file']").first();
             if (fileInput.isVisible()) {
                 fileInput.setInputFiles(Paths.get("src/main/resources/test-data/test_users.xlsx"));
@@ -1636,7 +1534,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1064)
     @DisplayName("QTYL_064: 导入用户(拖拽上传)")
     public void test_QTYL_064() {
         navigateToUserManagement();
@@ -1644,7 +1541,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (importBtn.isVisible()) {
             importBtn.click();
             page.waitForTimeout(1000);
-            // 如果有拖拽区域
             Locator dragArea = page.locator(".el-upload-dragger, .el-upload__drag").first();
             if (dragArea.isVisible()) {
                 log.info("QTYL_064 拖拽上传区域可见");
@@ -1658,7 +1554,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1065)
     @DisplayName("QTYL_065: 非excel格式文件导入")
     public void test_QTYL_065() {
         navigateToUserManagement();
@@ -1666,7 +1561,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (importBtn.isVisible()) {
             importBtn.click();
             page.waitForTimeout(1000);
-            // 尝试上传非excel文件
             Locator fileInput = page.locator("input[type='file']").first();
             if (fileInput.isVisible()) {
                 fileInput.setInputFiles(Paths.get("src/main/resources/application.properties"));
@@ -1685,7 +1579,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1066)
     @DisplayName("QTYL_066: 更新存在的用户数据")
     public void test_QTYL_066() {
         navigateToUserManagement();
@@ -1693,7 +1586,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (importBtn.isVisible()) {
             importBtn.click();
             page.waitForTimeout(1000);
-            // 查找"更新已存在用户"复选框
             Locator updateCheckbox = page.locator(".el-checkbox").filter(new Locator.FilterOptions().setHasText("更新")).first();
             if (updateCheckbox.isVisible()) {
                 updateCheckbox.click();
@@ -1716,7 +1608,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1067)
     @DisplayName("QTYL_067: 上传文件删除")
     public void test_QTYL_067() {
         navigateToUserManagement();
@@ -1724,13 +1615,11 @@ public class OtherFunctionsTest extends BaseTest {
         if (importBtn.isVisible()) {
             importBtn.click();
             page.waitForTimeout(1000);
-            // 先上传一个文件
             Locator fileInput = page.locator("input[type='file']").first();
             if (fileInput.isVisible()) {
                 fileInput.setInputFiles(Paths.get("src/main/resources/test-data/test_users.xlsx"));
                 page.waitForTimeout(500);
             }
-            // 然后删除上传的文件
             Locator deleteBtn = page.locator(".el-upload-list__item .el-icon-close, .el-upload__btn .el-icon-close, [class*='file-delete']").first();
             if (deleteBtn.isVisible()) {
                 deleteBtn.click();
@@ -1746,7 +1635,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1068)
     @DisplayName("QTYL_068: 导出用户")
     public void test_QTYL_068() {
         navigateToUserManagement();
@@ -1754,7 +1642,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_068 表格无数据，跳过导出");
             return;
         }
-        // 勾选第一个用户
         Locator checkbox = page.locator(".el-table__body-wrapper tbody tr .el-checkbox").first();
         if (checkbox.isVisible()) {
             checkbox.click();
@@ -1766,16 +1653,13 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1069)
     @DisplayName("QTYL_069: 隐藏搜索")
     public void test_QTYL_069() {
         navigateToUserManagement();
-        // 找"隐藏搜索"按钮
         Locator hideSearchBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("隐藏搜索")).first();
         if (hideSearchBtn.isVisible()) {
             hideSearchBtn.click();
             page.waitForTimeout(500);
-            // 验证搜索区域隐藏
             boolean searchHidden = page.locator(".el-table").first().evaluate(
                     "() => { const search = document.querySelector('[class*=\"search\"]'); return !search || search.offsetHeight === 0; }", null
             ).toString().contains("true");
@@ -1786,7 +1670,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1070)
     @DisplayName("QTYL_070: 显示搜索")
     public void test_QTYL_070() {
         navigateToUserManagement();
@@ -1801,7 +1684,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1071)
     @DisplayName("QTYL_071: 列表刷新")
     public void test_QTYL_071() {
         navigateToUserManagement();
@@ -1810,11 +1692,9 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1072)
     @DisplayName("QTYL_072: 隐藏列属性")
     public void test_QTYL_072() {
         navigateToUserManagement();
-        // 找"显隐列"或列设置按钮
         Locator columnSettings = page.locator("button").filter(new Locator.FilterOptions().setHasText("显隐列")).first();
         if (!columnSettings.isVisible()) {
             columnSettings = page.locator("[class*='column'], [class*='setting'], .el-icon-setting").first();
@@ -1822,7 +1702,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (columnSettings.isVisible()) {
             columnSettings.click();
             page.waitForTimeout(500);
-            // 取消勾选第一个列
             Locator columnCheckbox = page.locator(".el-checkbox").first();
             if (columnCheckbox.isVisible()) {
                 columnCheckbox.click();
@@ -1831,7 +1710,6 @@ public class OtherFunctionsTest extends BaseTest {
             } else {
                 log.info("QTYL_072 未找到列选项");
             }
-            // 点击空白处关闭
             page.locator(".el-table").first().click();
             page.waitForTimeout(300);
         } else {
@@ -1840,7 +1718,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1073)
     @DisplayName("QTYL_073: 显示列属性")
     public void test_QTYL_073() {
         navigateToUserManagement();
@@ -1851,7 +1728,6 @@ public class OtherFunctionsTest extends BaseTest {
         if (columnSettings.isVisible()) {
             columnSettings.click();
             page.waitForTimeout(500);
-            // 勾选之前取消的列
             Locator columnCheckbox = page.locator(".el-checkbox").first();
             if (columnCheckbox.isVisible()) {
                 columnCheckbox.click();
@@ -1866,7 +1742,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1074)
     @DisplayName("QTYL_074: 修改用户(勾选)")
     public void test_QTYL_074() {
         navigateToUserManagement();
@@ -1874,7 +1749,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_074 表格无数据，跳过");
             return;
         }
-        // 勾选第一个用户
         page.locator(".el-table__body-wrapper tbody tr .el-checkbox").first().click();
         page.waitForTimeout(300);
         clickModifyButton();
@@ -1888,7 +1762,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1075)
     @DisplayName("QTYL_075: 修改用户(操作栏)")
     public void test_QTYL_075() {
         navigateToUserManagement();
@@ -1896,7 +1769,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_075 表格无数据，跳过");
             return;
         }
-        // 操作栏的修改按钮
         Locator editBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("修改")).first();
@@ -1911,7 +1783,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1076)
     @DisplayName("QTYL_076: 删除用户")
     public void test_QTYL_076() {
         navigateToUserManagement();
@@ -1919,7 +1790,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_076 表格无数据，跳过");
             return;
         }
-        // 操作栏删除
         Locator delBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("删除")).first();
@@ -1930,7 +1800,6 @@ public class OtherFunctionsTest extends BaseTest {
             if (confirmBox.isVisible()) {
                 String msg = confirmBox.textContent();
                 log.info("QTYL_076 删除确认框: {}", msg.trim());
-                // 取消删除以免影响数据
                 Locator cancelBtn = confirmBox.locator("button").filter(new Locator.FilterOptions().setHasText("取 消")).first();
                 if (cancelBtn.isVisible()) cancelBtn.click();
                 page.waitForTimeout(300);
@@ -1941,7 +1810,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1077)
     @DisplayName("QTYL_077: 批量删除用户")
     public void test_QTYL_077() {
         navigateToUserManagement();
@@ -1949,7 +1817,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_077 表格无数据，跳过");
             return;
         }
-        // 勾选多个用户
         page.locator(".el-table__body-wrapper tbody tr .el-checkbox").first().click();
         page.waitForTimeout(200);
         if (page.locator(".el-table__body-wrapper tbody tr").count() > 1) {
@@ -1967,7 +1834,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1078)
     @DisplayName("QTYL_078: 重置密码")
     public void test_QTYL_078() {
         navigateToUserManagement();
@@ -1975,7 +1841,6 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_078 表格无数据，跳过");
             return;
         }
-        // 找"重置密码"按钮
         Locator resetPwdBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("重置密码")).first();
@@ -1999,7 +1864,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1079)
     @DisplayName("QTYL_079: 分配角色")
     public void test_QTYL_079() {
         navigateToUserManagement();
@@ -2007,12 +1871,10 @@ public class OtherFunctionsTest extends BaseTest {
             log.info("QTYL_079 表格无数据，跳过");
             return;
         }
-        // 找"分配角色"按钮
         Locator assignRoleBtn = page.locator(".el-table__body-wrapper tbody tr")
                 .first().locator("button, a, span")
                 .filter(new Locator.FilterOptions().setHasText("分配角色")).first();
         if (!assignRoleBtn.isVisible()) {
-            // 可能在更多操作裡
             page.locator(".el-table__body-wrapper tbody tr .el-checkbox").first().click();
             page.waitForTimeout(200);
             clickMoreButton();
@@ -2033,7 +1895,6 @@ public class OtherFunctionsTest extends BaseTest {
 
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 勾选角色
             Locator roleCheckbox = dialog.locator(".el-checkbox").first();
             if (roleCheckbox.isVisible()) {
                 roleCheckbox.click();
@@ -2046,7 +1907,6 @@ public class OtherFunctionsTest extends BaseTest {
     }
 
     @Test
-    @Order(1080)
     @DisplayName("QTYL_080: 取消角色授权")
     public void test_QTYL_080() {
         navigateToUserManagement();
@@ -2077,7 +1937,6 @@ public class OtherFunctionsTest extends BaseTest {
 
         Locator dialog = page.locator(".el-dialog").last();
         if (dialog.isVisible()) {
-            // 取消勾选已选中的角色
             Locator checkedCheckbox = dialog.locator(".el-checkbox.is-checked").first();
             if (checkedCheckbox.isVisible()) {
                 checkedCheckbox.click();

@@ -293,7 +293,7 @@ public class ReqApiActions {
         log.info("\n====== 清理环境结束 ======");
     }
 
-    private void forceCleanFolder(String objectId) {
+    public void forceCleanFolder(String objectId) {
         String recoverPayload = """
                 {"objectId": "%s", "parentId": "%s"}
                 """.formatted(objectId, objectId);
@@ -306,7 +306,7 @@ public class ReqApiActions {
         post(ERM_CLEAN_FOLDER, cleanPayload);
     }
 
-    private void forceCleanDocument(String objectId, String parentId) {
+    public void forceCleanDocument(String objectId, String parentId) {
         String payload = """
                 {
                     "objectId": "%s",
