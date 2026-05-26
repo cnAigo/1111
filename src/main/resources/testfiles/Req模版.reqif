@@ -1,0 +1,81 @@
+<REQ-IF xmlns="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd" xmlns:doors="http://www.ibm.com/rdm/doors/REQIF/xmlns/1.0" xmlns:reqif="http://www.omg.org/spec/ReqIF/20110401/reqif.xsd" xmlns:reqif-common="http://www.prostep.org/reqif" xmlns:reqif-xhtml="http://www.w3.org/1999/xhtml" xmlns:rm="http://www.ibm.com/rm" xmlns:rm-reqif="http://www.ibm.com/rm/reqif" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    
+    <THE-HEADER>
+        <REQ-IF-HEADER IDENTIFIER="f90a15f7-ee44-4ebd-ba70-a6ad2583f753">
+            <CREATION-TIME>2026-05-22 09:43:10</CREATION-TIME>
+            <REPOSITORY-ID>f90a15f7-ee44-4ebd-ba70-a6ad2583f753</REPOSITORY-ID>
+            <REQ-IF-VERSION/>
+            <SOURCE-TOOL-ID/>
+            <TITLE>需求规格00000032</TITLE>
+        </REQ-IF-HEADER>
+    </THE-HEADER>
+    <CORE-CONTENT>
+        <REQ-IF-CONTENT>
+            <DATATYPES>
+                <DATATYPE-DEFINITION-STRING IDENTIFIER="3b5b5cb2-740b-43c0-8181-d4fd230bbc2e" LONG-NAME="STRING"/>
+            </DATATYPES>
+            <SPEC-TYPES>
+                <SPECIFICATION-TYPE IDENTIFIER="d0d737f6-0a2a-412b-be30-8a3f64f20b76">
+                    <SPEC-ATTRIBUTES>
+                        <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="d0d737f6-0a2a-412b-be30-8a3f64f20b76_id" IS-EDITABLE="true" LONG-NAME="id">
+                            <TYPE>
+                                <DATATYPE-DEFINITION-STRING-REF>3b5b5cb2-740b-43c0-8181-d4fd230bbc2e</DATATYPE-DEFINITION-STRING-REF>
+                            </TYPE>
+                        </ATTRIBUTE-DEFINITION-STRING>
+                        <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="d0d737f6-0a2a-412b-be30-8a3f64f20b76_createdTime" IS-EDITABLE="true" LONG-NAME="createdTime">
+                            <TYPE>
+                                <DATATYPE-DEFINITION-STRING-REF>3b5b5cb2-740b-43c0-8181-d4fd230bbc2e</DATATYPE-DEFINITION-STRING-REF>
+                            </TYPE>
+                        </ATTRIBUTE-DEFINITION-STRING>
+                        <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="d0d737f6-0a2a-412b-be30-8a3f64f20b76_heading" IS-EDITABLE="true" LONG-NAME="heading">
+                            <TYPE>
+                                <DATATYPE-DEFINITION-STRING-REF>3b5b5cb2-740b-43c0-8181-d4fd230bbc2e</DATATYPE-DEFINITION-STRING-REF>
+                            </TYPE>
+                        </ATTRIBUTE-DEFINITION-STRING>
+                        <ATTRIBUTE-DEFINITION-STRING IDENTIFIER="d0d737f6-0a2a-412b-be30-8a3f64f20b76_createdBy" IS-EDITABLE="true" LONG-NAME="createdBy">
+                            <TYPE>
+                                <DATATYPE-DEFINITION-STRING-REF>3b5b5cb2-740b-43c0-8181-d4fd230bbc2e</DATATYPE-DEFINITION-STRING-REF>
+                            </TYPE>
+                        </ATTRIBUTE-DEFINITION-STRING>
+                    </SPEC-ATTRIBUTES>
+                </SPECIFICATION-TYPE>
+            </SPEC-TYPES>
+            <SPEC-OBJECTS/>
+            <SPECIFICATIONS>
+                <SPECIFICATION IDENTIFIER="fbf93e6f-769e-4fe2-a506-30fc15b80dee" LONG-NAME="需求规格00000032">
+                    <TYPE>
+                        <SPECIFICATION-TYPE-REF>d0d737f6-0a2a-412b-be30-8a3f64f20b76</SPECIFICATION-TYPE-REF>
+                    </TYPE>
+                    <VALUES>
+                        <ATTRIBUTE-VALUE-STRING>
+                            <DEFINITION>
+                                <ATTRIBUTE-DEFINITION-STRING-REF>d0d737f6-0a2a-412b-be30-8a3f64f20b76_id</ATTRIBUTE-DEFINITION-STRING-REF>
+                            </DEFINITION>
+                            <THE-VALUE>
+                                <reqif-xhtml:div>2056957669613236225</reqif-xhtml:div>
+                            </THE-VALUE>
+                        </ATTRIBUTE-VALUE-STRING>
+                        <ATTRIBUTE-VALUE-STRING>
+                            <DEFINITION/>
+                            <THE-VALUE/>
+                        </ATTRIBUTE-VALUE-STRING>
+                        <ATTRIBUTE-VALUE-STRING>
+                            <DEFINITION>
+                                <ATTRIBUTE-DEFINITION-STRING-REF>d0d737f6-0a2a-412b-be30-8a3f64f20b76_heading</ATTRIBUTE-DEFINITION-STRING-REF>
+                            </DEFINITION>
+                            <THE-VALUE>
+                                <reqif-xhtml:div>需求规格00000032</reqif-xhtml:div>
+                            </THE-VALUE>
+                        </ATTRIBUTE-VALUE-STRING>
+                        <ATTRIBUTE-VALUE-STRING>
+                            <DEFINITION/>
+                            <THE-VALUE/>
+                        </ATTRIBUTE-VALUE-STRING>
+                    </VALUES>
+                </SPECIFICATION>
+            </SPECIFICATIONS>
+            <SPEC-RELATIONS/>
+        </REQ-IF-CONTENT>
+    </CORE-CONTENT>
+    
+</REQ-IF>
