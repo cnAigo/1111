@@ -5,6 +5,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
 import com.microsoft.playwright.TimeoutError;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.MouseButton;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import config.TestConfig;
@@ -22,6 +23,11 @@ public class RequirementPage {
 
     public RequirementPage(Page page) {
         this.page = page;
+    }
+
+    public void refreshTree() {
+        page.reload();
+        page.waitForLoadState(LoadState.NETWORKIDLE);
     }
 
     public void waitForTreeNodeVisible(String nodeName) {

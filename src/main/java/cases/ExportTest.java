@@ -37,7 +37,9 @@ public class ExportTest extends BaseTest {
     void test_GNYL_060_EnterExportDialog() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
+
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -62,7 +64,8 @@ public class ExportTest extends BaseTest {
     void test_GNYL_061_exportExcel() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -95,7 +98,8 @@ public class ExportTest extends BaseTest {
     void test_GNYL_062_exportWord() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -128,7 +132,8 @@ public class ExportTest extends BaseTest {
     void test_GNYL_063_exportReqIF() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -161,7 +166,8 @@ public class ExportTest extends BaseTest {
     void test_GNYL_064_exportSettings() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -187,7 +193,8 @@ public class ExportTest extends BaseTest {
     void test_GNYL_065_batchExport() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -228,7 +235,8 @@ public class ExportTest extends BaseTest {
     void test_GNYL_066_exportHistory() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 

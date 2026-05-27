@@ -22,7 +22,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             rightClickReqSpecAndExport(doc[1]);
 
             Download download = waitForDownloadAndLog(
@@ -41,7 +42,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             tableHeaderExport(folder[1], doc[1]);
 
             Download download = waitForDownloadAndLog(
@@ -63,7 +65,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             rightClickReqSpecAndExport(doc[1]);
 
             Download download = waitForDownloadAndLog(
@@ -82,7 +85,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             tableHeaderExport(folder[1], doc[1]);
 
             Download download = waitForDownloadAndLog(
@@ -104,7 +108,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.TREEITEM,
                     new Page.GetByRoleOptions().setName(folder[1]).setExact(true))
@@ -143,7 +148,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             page.locator("#app").getByText(folder[1])
                     .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
@@ -190,7 +196,8 @@ public class ReqExportFullTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             rightClickFolderExportReqIf(folder[1]);
 
             Locator fileNameInput = page.locator("div")
@@ -224,7 +231,8 @@ public class ReqExportFullTest extends BaseTest {
     void test_GNYL_070_reqIfAttrNameRequired() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             rightClickFolderExportReqIf(folder[1]);
 
             Locator attrNameInput = page.locator("div")
@@ -261,7 +269,8 @@ public class ReqExportFullTest extends BaseTest {
     void test_GNYL_071_reqIfAttrTypeRequired() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             rightClickFolderExportReqIf(folder[1]);
 
             page.getByRole(AriaRole.CONTENTINFO)

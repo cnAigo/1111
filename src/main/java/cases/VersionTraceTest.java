@@ -15,31 +15,37 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_267: 升版")
     public void test_GNYL_267() {
-        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
-        page.waitForTimeout(1000);
+        String[] doc = createTempDoc();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        // 尝试悬浮"已发布"状态 → 升版
-        Locator publishedTag = page.getByText("已发布").first();
-        if (publishedTag.isVisible()) {
-            publishedTag.hover();
-            page.waitForTimeout(300);
-            Locator upgradeBtn = page.getByText("升版", new Page.GetByTextOptions().setExact(true));
-            if (upgradeBtn.isVisible()) {
-                upgradeBtn.click();
-                page.waitForTimeout(500);
-                log.info("GNYL_267 升版成功");
+            reqPage.doubleClickTreeNode(doc[1]);
+            page.waitForTimeout(1000);
+
+            Locator publishedTag = page.getByText("已发布").first();
+            if (publishedTag.isVisible()) {
+                publishedTag.hover();
+                page.waitForTimeout(300);
+                Locator upgradeBtn = page.getByText("升版", new Page.GetByTextOptions().setExact(true));
+                if (upgradeBtn.isVisible()) {
+                    upgradeBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("GNYL_267 升版成功");
+                } else {
+                    log.info("GNYL_267 未找到升版按钮（需求规格可能不在已发布状态）");
+                }
             } else {
-                log.info("GNYL_267 未找到升版按钮（需求规格可能不在已发布状态）");
+                log.info("GNYL_267 未找到'已发布'状态标签");
             }
-        } else {
-            log.info("GNYL_267 未找到'已发布'状态标签");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("GNYL_268: 切换版本")
     public void test_GNYL_268() {
-        // 尝试点击版本号，选择版本切换
         Locator versionSelect = page.locator("[class*='version'], .el-select, [class*='tag-version']").first();
         if (versionSelect.isVisible()) {
             versionSelect.click();
@@ -62,7 +68,6 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_269: 查看基线列表")
     public void test_GNYL_269() {
-        // 尝试在左侧导航栏找到"基线"图标
         Locator baselineNav = page.locator("[class*='baseline'], [class*='base-line'], [title*='基线']").first();
         if (baselineNav.isVisible()) {
             baselineNav.click();
@@ -95,7 +100,6 @@ public class VersionTraceTest extends BaseTest {
                     page.waitForTimeout(300);
                 }
 
-                // 勾选需求规格
                 Locator checkbox = page.locator(".el-checkbox").first();
                 if (checkbox.isVisible()) {
                     checkbox.click();
@@ -126,7 +130,6 @@ public class VersionTraceTest extends BaseTest {
                 createBtn.click();
                 page.waitForTimeout(500);
 
-                // 不填写名称，直接确定
                 page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确定")).click();
                 page.waitForTimeout(500);
 
@@ -160,7 +163,6 @@ public class VersionTraceTest extends BaseTest {
                 createBtn.click();
                 page.waitForTimeout(500);
 
-                // 填写名称但不勾选需求规格
                 Locator nameInput = page.locator(".el-dialog .el-input__inner, .el-form-item input").first();
                 if (nameInput.isVisible()) {
                     nameInput.fill("基线必选测试_" + System.currentTimeMillis());
@@ -240,70 +242,94 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_275: 添加文件夹到收藏夹(根节点列表)")
     public void test_GNYL_275() {
-        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.TREEITEM,
-                        new Page.GetByRoleOptions().setName(TestConstants.PARENT_FOLDER).setExact(true))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            page.waitForTimeout(1000);
 
-        Locator favItem = page.getByText("添加到收藏夹", new Page.GetByTextOptions().setExact(true));
-        if (favItem.isVisible()) {
-            favItem.click();
+            page.getByRole(AriaRole.TREEITEM,
+                            new Page.GetByRoleOptions().setName(folder[1]).setExact(true))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_275 添加文件夹到收藏夹(根节点列表)成功");
-        } else {
-            log.info("GNYL_275 右键菜单未找到'添加到收藏夹'");
+
+            Locator favItem = page.getByText("添加到收藏夹", new Page.GetByTextOptions().setExact(true));
+            if (favItem.isVisible()) {
+                favItem.click();
+                page.waitForTimeout(500);
+                log.info("GNYL_275 添加文件夹到收藏夹(根节点列表)成功");
+            } else {
+                log.info("GNYL_275 右键菜单未找到'添加到收藏夹'");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_276: 添加文件夹到收藏夹(文件夹列表)")
     public void test_GNYL_276() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.TREEITEM,
-                        new Page.GetByRoleOptions().setName(TestConstants.PARENT_FOLDER).setExact(true))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        Locator favItem = page.getByText("添加到收藏夹", new Page.GetByTextOptions().setExact(true));
-        if (favItem.isVisible()) {
-            favItem.click();
+            page.getByRole(AriaRole.TREEITEM,
+                            new Page.GetByRoleOptions().setName(folder[1]).setExact(true))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_276 添加文件夹到收藏夹(文件夹列表)成功");
-        } else {
-            log.info("GNYL_276 右键菜单未找到'添加到收藏夹'");
+
+            Locator favItem = page.getByText("添加到收藏夹", new Page.GetByTextOptions().setExact(true));
+            if (favItem.isVisible()) {
+                favItem.click();
+                page.waitForTimeout(500);
+                log.info("GNYL_276 添加文件夹到收藏夹(文件夹列表)成功");
+            } else {
+                log.info("GNYL_276 右键菜单未找到'添加到收藏夹'");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_277: 添加需求规格到收藏夹")
     public void test_GNYL_277() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW,
-                        new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        Locator favItem = page.getByText("添加到收藏夹", new Page.GetByTextOptions().setExact(true));
-        if (favItem.isVisible()) {
-            favItem.click();
+            page.getByRole(AriaRole.ROW,
+                            new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_277 添加需求规格到收藏夹成功");
-        } else {
-            log.info("GNYL_277 右键菜单未找到'添加到收藏夹'");
+
+            Locator favItem = page.getByText("添加到收藏夹", new Page.GetByTextOptions().setExact(true));
+            if (favItem.isVisible()) {
+                favItem.click();
+                page.waitForTimeout(500);
+                log.info("GNYL_277 添加需求规格到收藏夹成功");
+            } else {
+                log.info("GNYL_277 右键菜单未找到'添加到收藏夹'");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_278: 查看收藏列表")
     public void test_GNYL_278() {
-        // 尝试点击左侧导航栏中"收藏"相关的图标
         Locator favNav = page.locator("[class*='favorite'], [class*='star'], [class*='collect'], .el-icon-star-on")
                 .first();
         if (favNav.isVisible()) {
@@ -662,97 +688,117 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_330: 需求列表存在的需求检索")
     public void test_GNYL_330() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
-
-        reqPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
-        page.waitForTimeout(500);
-
-        Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
-        if (searchInput.isVisible()) {
-            searchInput.click();
-            searchInput.fill("req-");
-            page.waitForTimeout(500);
-            searchInput.press("Enter");
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
 
-            Locator result = page.getByText("req-").first();
-            if (result.isVisible()) {
-                log.info("GNYL_330 需求列表存在的需求检索成功");
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
+
+            reqPage.openFolderAndActivateEdit(folder[1], doc[1]);
+            page.waitForTimeout(500);
+
+            Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
+            if (searchInput.isVisible()) {
+                searchInput.click();
+                searchInput.fill(doc[1].substring(0, Math.min(5, doc[1].length())));
+                page.waitForTimeout(500);
+                searchInput.press("Enter");
+                page.waitForTimeout(1000);
+
+                Locator result = page.getByText(doc[1]).first();
+                if (result.isVisible()) {
+                    log.info("GNYL_330 需求列表存在的需求检索成功");
+                } else {
+                    log.info("GNYL_330 检索未找到结果");
+                }
             } else {
-                log.info("GNYL_330 检索未找到结果");
+                log.info("GNYL_330 未找到搜索输入框");
             }
-        } else {
-            log.info("GNYL_330 未找到搜索输入框");
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_331: 需求列表不存在的需求检索")
     public void test_GNYL_331() {
-        Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索']").first();
-        if (!searchInput.isVisible()) {
-            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-            page.waitForTimeout(1000);
-            reqPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
-            page.waitForTimeout(500);
-            searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
-        }
-
-        if (searchInput.isVisible()) {
-            searchInput.click();
-            searchInput.fill("__不存在_需求__");
-            page.waitForTimeout(500);
-            searchInput.press("Enter");
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
 
-            Locator emptyText = page.locator(".el-empty, [class*='empty'], .el-table__empty-text").first();
-            if (emptyText.isVisible()) {
-                log.info("GNYL_331 不存在的需求检索显示暂无数据");
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
+            reqPage.openFolderAndActivateEdit(folder[1], doc[1]);
+            page.waitForTimeout(500);
+
+            Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
+            if (searchInput.isVisible()) {
+                searchInput.click();
+                searchInput.fill("__不存在_需求__");
+                page.waitForTimeout(500);
+                searchInput.press("Enter");
+                page.waitForTimeout(1000);
+
+                Locator emptyText = page.locator(".el-empty, [class*='empty'], .el-table__empty-text").first();
+                if (emptyText.isVisible()) {
+                    log.info("GNYL_331 不存在的需求检索显示暂无数据");
+                } else {
+                    log.info("GNYL_331 搜索完成，无匹配结果");
+                }
             } else {
-                log.info("GNYL_331 搜索完成，无匹配结果");
+                log.info("GNYL_331 未找到搜索输入框");
             }
-        } else {
-            log.info("GNYL_331 未找到搜索输入框");
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_332: 需求模糊查询")
     public void test_GNYL_332() {
-        Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索']").first();
-        if (!searchInput.isVisible()) {
-            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-            page.waitForTimeout(1000);
-            reqPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
-            page.waitForTimeout(500);
-            searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
-        }
-
-        if (searchInput.isVisible()) {
-            searchInput.click();
-            searchInput.fill("req");
-            page.waitForTimeout(500);
-            searchInput.press("Enter");
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
 
-            Locator result = page.getByText("req-").first();
-            if (result.isVisible()) {
-                log.info("GNYL_332 模糊查询成功，包含关键字的条目已展示");
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
+            reqPage.openFolderAndActivateEdit(folder[1], doc[1]);
+            page.waitForTimeout(500);
+
+            Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
+            if (searchInput.isVisible()) {
+                searchInput.click();
+                searchInput.fill("AT_");
+                page.waitForTimeout(500);
+                searchInput.press("Enter");
+                page.waitForTimeout(1000);
+
+                Locator result = page.getByText("AT_").first();
+                if (result.isVisible()) {
+                    log.info("GNYL_332 模糊查询成功，包含关键字的条目已展示");
+                } else {
+                    log.info("GNYL_332 模糊查询完成");
+                }
             } else {
-                log.info("GNYL_332 模糊查询完成");
+                log.info("GNYL_332 未找到搜索输入框");
             }
-        } else {
-            log.info("GNYL_332 未找到搜索输入框");
-        }
 
-        // 清除搜索条件恢复列表
-        if (searchInput.isVisible()) {
-            searchInput.click();
-            searchInput.fill("");
-            page.waitForTimeout(300);
-            searchInput.press("Enter");
-            page.waitForTimeout(500);
+            if (searchInput.isVisible()) {
+                searchInput.click();
+                searchInput.fill("");
+                page.waitForTimeout(300);
+                searchInput.press("Enter");
+                page.waitForTimeout(500);
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -760,310 +806,410 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_334: 复制需求为同级对象(右键)")
     public void test_GNYL_334() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        // 右键条目 → 复制
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        // 右键目标位置 → 粘贴为同级对象
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-
-        Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
-        if (pasteItem.isVisible()) {
-            pasteItem.click();
-            page.waitForTimeout(300);
-            page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_334 复制需求为同级对象成功");
-        } else {
-            log.info("GNYL_334 未找到粘贴菜单");
+            page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(500);
+
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+
+            Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
+            if (pasteItem.isVisible()) {
+                pasteItem.click();
+                page.waitForTimeout(300);
+                page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_334 复制需求为同级对象成功");
+            } else {
+                log.info("GNYL_334 未找到粘贴菜单");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_335: 复制需求为子级对象(右键)")
     public void test_GNYL_335() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-
-        Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
-        if (pasteItem.isVisible()) {
-            pasteItem.click();
-            page.waitForTimeout(300);
-            page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_335 复制需求为子级对象成功");
-        } else {
-            log.info("GNYL_335 未找到粘贴菜单");
+            page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(500);
+
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+
+            Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
+            if (pasteItem.isVisible()) {
+                pasteItem.click();
+                page.waitForTimeout(300);
+                page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_335 复制需求为子级对象成功");
+            } else {
+                log.info("GNYL_335 未找到粘贴菜单");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_338: 剪切需求为同级对象(右键)")
     public void test_GNYL_338() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("剪切", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-
-        Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
-        if (pasteItem.isVisible()) {
-            pasteItem.click();
-            page.waitForTimeout(300);
-            page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_338 剪切需求为同级对象成功");
-        } else {
-            log.info("GNYL_338 未找到粘贴菜单");
+            page.getByText("剪切", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(500);
+
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+
+            Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
+            if (pasteItem.isVisible()) {
+                pasteItem.click();
+                page.waitForTimeout(300);
+                page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_338 剪切需求为同级对象成功");
+            } else {
+                log.info("GNYL_338 未找到粘贴菜单");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_339: 剪切需求为子级对象(右键)")
     public void test_GNYL_339() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("剪切", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-
-        Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
-        if (pasteItem.isVisible()) {
-            pasteItem.click();
-            page.waitForTimeout(300);
-            page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_339 剪切需求为子级对象成功");
-        } else {
-            log.info("GNYL_339 未找到粘贴菜单");
+            page.getByText("剪切", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(500);
+
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+
+            Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
+            if (pasteItem.isVisible()) {
+                pasteItem.click();
+                page.waitForTimeout(300);
+                page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_339 剪切需求为子级对象成功");
+            } else {
+                log.info("GNYL_339 未找到粘贴菜单");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_342: 切换标题/正文")
     public void test_GNYL_342() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        Locator switchItem = page.getByText("切换标题/正文", new Page.GetByTextOptions().setExact(true));
-        if (switchItem.isVisible()) {
-            switchItem.click();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
-            log.info("GNYL_342 切换标题/正文成功");
-        } else {
-            log.info("GNYL_342 未找到切换标题/正文菜单项");
+
+            Locator switchItem = page.getByText("切换标题/正文", new Page.GetByTextOptions().setExact(true));
+            if (switchItem.isVisible()) {
+                switchItem.click();
+                page.waitForTimeout(500);
+                log.info("GNYL_342 切换标题/正文成功");
+            } else {
+                log.info("GNYL_342 未找到切换标题/正文菜单项");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_336: 复制为同级对象(拖动)")
     public void test_GNYL_336() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        // 拖动条目到目标文件夹
-        Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
-        Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(TestConstants.PARENT_FOLDER)).first();
-        if (source.isVisible() && target.isVisible()) {
-            source.hover();
-            page.mouse().down();
-            target.hover();
-            page.waitForTimeout(300);
-            page.mouse().up();
-            page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-            page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(300);
-            page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            log.info("GNYL_336 复制为同级对象(拖动)成功");
-        } else {
-            log.info("GNYL_336 未找到源或目标元素");
+            Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1])).first();
+            Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(folder[1])).first();
+            if (source.isVisible() && target.isVisible()) {
+                source.hover();
+                page.mouse().down();
+                target.hover();
+                page.waitForTimeout(300);
+                page.mouse().up();
+                page.waitForTimeout(500);
+
+                page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(300);
+                page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_336 复制为同级对象(拖动)成功");
+            } else {
+                log.info("GNYL_336 未找到源或目标元素");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_337: 复制为子级对象(拖动)")
     public void test_GNYL_337() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
-        Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(TestConstants.PARENT_FOLDER)).first();
-        if (source.isVisible() && target.isVisible()) {
-            source.hover();
-            page.mouse().down();
-            target.hover();
-            page.waitForTimeout(300);
-            page.mouse().up();
-            page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-            page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(300);
-            page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            log.info("GNYL_337 复制为子级对象(拖动)成功");
-        } else {
-            log.info("GNYL_337 未找到源或目标元素");
+            Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1])).first();
+            Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(folder[1])).first();
+            if (source.isVisible() && target.isVisible()) {
+                source.hover();
+                page.mouse().down();
+                target.hover();
+                page.waitForTimeout(300);
+                page.mouse().up();
+                page.waitForTimeout(500);
+
+                page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(300);
+                page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_337 复制为子级对象(拖动)成功");
+            } else {
+                log.info("GNYL_337 未找到源或目标元素");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_340: 移动为同级对象")
     public void test_GNYL_340() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
-        Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(TestConstants.PARENT_FOLDER)).first();
-        if (source.isVisible() && target.isVisible()) {
-            source.hover();
-            page.mouse().down();
-            target.hover();
-            page.waitForTimeout(300);
-            page.mouse().up();
-            page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-            page.getByText("移动", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(300);
-            page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            log.info("GNYL_340 移动为同级对象成功");
-        } else {
-            log.info("GNYL_340 未找到源或目标元素");
+            Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1])).first();
+            Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(folder[1])).first();
+            if (source.isVisible() && target.isVisible()) {
+                source.hover();
+                page.mouse().down();
+                target.hover();
+                page.waitForTimeout(300);
+                page.mouse().up();
+                page.waitForTimeout(500);
+
+                page.getByText("移动", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(300);
+                page.getByText("同级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_340 移动为同级对象成功");
+            } else {
+                log.info("GNYL_340 未找到源或目标元素");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_341: 移动为子级对象")
     public void test_GNYL_341() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
-        Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(TestConstants.PARENT_FOLDER)).first();
-        if (source.isVisible() && target.isVisible()) {
-            source.hover();
-            page.mouse().down();
-            target.hover();
-            page.waitForTimeout(300);
-            page.mouse().up();
-            page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-            page.getByText("移动", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(300);
-            page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            log.info("GNYL_341 移动为子级对象成功");
-        } else {
-            log.info("GNYL_341 未找到源或目标元素");
+            Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1])).first();
+            Locator target = page.locator("[class*='tree'] [class*='node']").filter(new Locator.FilterOptions().setHasText(folder[1])).first();
+            if (source.isVisible() && target.isVisible()) {
+                source.hover();
+                page.mouse().down();
+                target.hover();
+                page.waitForTimeout(300);
+                page.mouse().up();
+                page.waitForTimeout(500);
+
+                page.getByText("移动", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(300);
+                page.getByText("子级对象", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_341 移动为子级对象成功");
+            } else {
+                log.info("GNYL_341 未找到源或目标元素");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_343: 切换标题/正文(带图片表格提示)")
     public void test_GNYL_343() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        String[] doc = createTempDoc(folder[0]);
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        // 找一个可能包含图片或表格的条目
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("req-"))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        Locator switchItem = page.getByText("切换标题/正文", new Page.GetByTextOptions().setExact(true));
-        if (switchItem.isVisible()) {
-            switchItem.click();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(doc[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(500);
 
-            Locator alert = page.locator(".el-message, .el-message-box, .el-dialog, [role='alert']").first();
-            if (alert.isVisible()) {
-                log.info("GNYL_343 检测到切换提示: {}", alert.textContent());
+            Locator switchItem = page.getByText("切换标题/正文", new Page.GetByTextOptions().setExact(true));
+            if (switchItem.isVisible()) {
+                switchItem.click();
+                page.waitForTimeout(500);
+
+                Locator alert = page.locator(".el-message, .el-message-box, .el-dialog, [role='alert']").first();
+                if (alert.isVisible()) {
+                    log.info("GNYL_343 检测到切换提示: {}", alert.textContent());
+                } else {
+                    log.info("GNYL_343 切换标题/正文成功（无提示）");
+                }
             } else {
-                log.info("GNYL_343 切换标题/正文成功（无提示）");
+                log.info("GNYL_343 未找到切换标题/正文菜单项");
             }
-        } else {
-            log.info("GNYL_343 未找到切换标题/正文菜单项");
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("GNYL_344: 更改单另存为草稿")
     public void test_GNYL_344() {
-        // 打开需求规格 → 审签 → 另存为草稿
-        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
-        page.waitForTimeout(1000);
+        String[] doc = createTempDoc();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator statusTag = page.getByText("已发布").first();
-        if (statusTag.isVisible()) {
-            statusTag.hover();
-            page.waitForTimeout(300);
-            page.getByText("审签", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            page.getByText("另存为草稿", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            log.info("GNYL_344 更改单另存为草稿成功");
-        } else {
-            log.info("GNYL_344 未找到'已发布'状态标签");
+            reqPage.doubleClickTreeNode(doc[1]);
+            page.waitForTimeout(1000);
+
+            Locator statusTag = page.getByText("已发布").first();
+            if (statusTag.isVisible()) {
+                statusTag.hover();
+                page.waitForTimeout(300);
+                page.getByText("审签", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                page.getByText("另存为草稿", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_344 更改单另存为草稿成功");
+            } else {
+                log.info("GNYL_344 未找到'已发布'状态标签");
+            }
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("GNYL_345: 更改审签发布")
     public void test_GNYL_345() {
-        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
-        page.waitForTimeout(1000);
+        String[] doc = createTempDoc();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator statusTag = page.getByText("已发布").first();
-        if (statusTag.isVisible()) {
-            statusTag.hover();
-            page.waitForTimeout(300);
-            page.getByText("审签", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            page.getByText("发布", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(500);
-            log.info("GNYL_345 更改审签发布成功");
-        } else {
-            log.info("GNYL_345 未找到'已发布'状态标签");
+            reqPage.doubleClickTreeNode(doc[1]);
+            page.waitForTimeout(1000);
+
+            Locator statusTag = page.getByText("已发布").first();
+            if (statusTag.isVisible()) {
+                statusTag.hover();
+                page.waitForTimeout(300);
+                page.getByText("审签", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                page.getByText("发布", new Page.GetByTextOptions().setExact(true)).click();
+                page.waitForTimeout(500);
+                log.info("GNYL_345 更改审签发布成功");
+            } else {
+                log.info("GNYL_345 未找到'已发布'状态标签");
+            }
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("GNYL_346: 我的更改单重新提交")
     public void test_GNYL_346() {
-        // 尝试查找"我的更改单"页面入口
         Locator changeOrderNav = page.locator("[class*='change'], [class*='alter'], [class*='modify'], [title*='更改单']").first();
         if (changeOrderNav.isVisible()) {
             changeOrderNav.click();

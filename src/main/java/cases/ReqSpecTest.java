@@ -20,7 +20,8 @@ public class ReqSpecTest extends BaseTest {
     public void test_GNYL_073() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
@@ -48,7 +49,8 @@ public class ReqSpecTest extends BaseTest {
     public void test_GNYL_074() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
@@ -76,7 +78,8 @@ public class ReqSpecTest extends BaseTest {
     public void test_GNYL_075() {
         String[] folder = createTempFolder();
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
@@ -105,7 +108,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -133,7 +137,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -161,7 +166,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -204,7 +210,8 @@ public class ReqSpecTest extends BaseTest {
         String[] doc1 = createTempDoc(folder[0]);
         String[] doc2 = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -244,7 +251,8 @@ public class ReqSpecTest extends BaseTest {
         String[] doc1 = createTempDoc(folder[0]);
         String[] doc2 = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -279,7 +287,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.TREEITEM,
                             new Page.GetByRoleOptions().setName(doc[1]).setExact(true))
@@ -317,7 +326,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -347,7 +357,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -370,7 +381,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -393,7 +405,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
             reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
@@ -426,7 +439,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             Locator searchIcon = page.locator("[class*='search'], [class*='el-icon-search'], .fa-search").first();
             if (searchIcon.isVisible()) {
@@ -461,7 +475,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索']").first();
             if (!searchInput.isVisible()) {
@@ -530,7 +545,8 @@ public class ReqSpecTest extends BaseTest {
         String[] folder = createTempFolder();
         String[] doc = createTempDoc(folder[0]);
         try {
-            page.waitForTimeout(500);
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
             Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索']").first();
             if (!searchInput.isVisible()) {

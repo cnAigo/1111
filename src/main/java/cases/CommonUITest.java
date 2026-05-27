@@ -285,39 +285,47 @@ public class CommonUITest extends BaseTest {
     @Test
     @DisplayName("TYYL_041: 上传文件删除")
     public void test_TYYL_041() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
-
-        Locator importBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("导入")).first();
-        if (importBtn.isVisible()) {
-            importBtn.click();
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
 
-            Locator fileInput = page.locator("input[type='file']").first();
-            if (fileInput.isVisible()) {
-                fileInput.setInputFiles(Paths.get("src/main/resources/application.properties"));
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
+
+            Locator importBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("导入")).first();
+            if (importBtn.isVisible()) {
+                importBtn.click();
                 page.waitForTimeout(1000);
-            }
 
-            Locator deleteBtn = page.locator(".el-upload-list__item .el-icon-close, [class*='file-delete'], .el-icon-delete").first();
-            if (deleteBtn.isVisible()) {
-                deleteBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_041 上传文件删除成功");
+                Locator fileInput = page.locator("input[type='file']").first();
+                if (fileInput.isVisible()) {
+                    fileInput.setInputFiles(Paths.get("src/main/resources/application.properties"));
+                    page.waitForTimeout(1000);
+                }
+
+                Locator deleteBtn = page.locator(".el-upload-list__item .el-icon-close, [class*='file-delete'], .el-icon-delete").first();
+                if (deleteBtn.isVisible()) {
+                    deleteBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_041 上传文件删除成功");
+                } else {
+                    log.info("TYYL_041 未找到已上传文件的删除按钮");
+                }
+
+                Locator cancelBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消"));
+                if (!cancelBtn.isVisible()) {
+                    cancelBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("取消")).first();
+                }
+                if (cancelBtn.isVisible()) {
+                    cancelBtn.click();
+                    page.waitForTimeout(500);
+                }
             } else {
-                log.info("TYYL_041 未找到已上传文件的删除按钮");
+                log.info("TYYL_041 未找到导入按钮");
             }
-
-            Locator cancelBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消"));
-            if (!cancelBtn.isVisible()) {
-                cancelBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("取消")).first();
-            }
-            if (cancelBtn.isVisible()) {
-                cancelBtn.click();
-                page.waitForTimeout(500);
-            }
-        } else {
-            log.info("TYYL_041 未找到导入按钮");
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -377,285 +385,335 @@ public class CommonUITest extends BaseTest {
     @Test
     @DisplayName("TYYL_049: 分页导航")
     public void test_TYYL_049() {
-        Locator pagination = page.locator(".el-pagination").first();
-        if (!pagination.isVisible()) {
-            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
-            pagination = page.locator(".el-pagination").first();
-        }
 
-        if (pagination.isVisible()) {
-            Locator nextBtn = pagination.locator(".btn-next").first();
-            if (nextBtn.isVisible() && !nextBtn.getAttribute("class").contains("disabled")) {
-                nextBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_049 下一页点击成功");
-            } else {
-                log.info("TYYL_049 下一页按钮不可用（已禁用或不存在）");
+            Locator pagination = page.locator(".el-pagination").first();
+            if (!pagination.isVisible()) {
+                reqPage.doubleClickTreeNode(folder[1]);
+                page.waitForTimeout(1000);
+                pagination = page.locator(".el-pagination").first();
             }
 
-            Locator prevBtn = pagination.locator(".btn-prev").first();
-            if (prevBtn.isVisible() && !prevBtn.getAttribute("class").contains("disabled")) {
-                prevBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_049 上一页点击成功");
-            } else {
-                log.info("TYYL_049 上一页按钮不可用");
-            }
+            if (pagination.isVisible()) {
+                Locator nextBtn = pagination.locator(".btn-next").first();
+                if (nextBtn.isVisible() && !nextBtn.getAttribute("class").contains("disabled")) {
+                    nextBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_049 下一页点击成功");
+                } else {
+                    log.info("TYYL_049 下一页按钮不可用（已禁用或不存在）");
+                }
 
-            log.info("TYYL_049 分页导航测试完成");
-        } else {
-            log.info("TYYL_049 未找到分页组件");
+                Locator prevBtn = pagination.locator(".btn-prev").first();
+                if (prevBtn.isVisible() && !prevBtn.getAttribute("class").contains("disabled")) {
+                    prevBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_049 上一页点击成功");
+                } else {
+                    log.info("TYYL_049 上一页按钮不可用");
+                }
+
+                log.info("TYYL_049 分页导航测试完成");
+            } else {
+                log.info("TYYL_049 未找到分页组件");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("TYYL_050: 页码跳转")
     public void test_TYYL_050() {
-        Locator pagination = page.locator(".el-pagination").first();
-        if (!pagination.isVisible()) {
-            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
-            pagination = page.locator(".el-pagination").first();
-        }
 
-        if (pagination.isVisible()) {
-            Locator jumpInput = pagination.locator("input[type='text']").first();
-            if (jumpInput.isVisible()) {
-                jumpInput.click();
-                jumpInput.fill("1");
-                jumpInput.press("Enter");
-                page.waitForTimeout(500);
-                log.info("TYYL_050 页码跳转成功");
-            } else {
-                log.info("TYYL_050 未找到跳转输入框");
+            Locator pagination = page.locator(".el-pagination").first();
+            if (!pagination.isVisible()) {
+                reqPage.doubleClickTreeNode(folder[1]);
+                page.waitForTimeout(1000);
+                pagination = page.locator(".el-pagination").first();
             }
-        } else {
-            log.info("TYYL_050 未找到分页组件");
+
+            if (pagination.isVisible()) {
+                Locator jumpInput = pagination.locator("input[type='text']").first();
+                if (jumpInput.isVisible()) {
+                    jumpInput.click();
+                    jumpInput.fill("1");
+                    jumpInput.press("Enter");
+                    page.waitForTimeout(500);
+                    log.info("TYYL_050 页码跳转成功");
+                } else {
+                    log.info("TYYL_050 未找到跳转输入框");
+                }
+            } else {
+                log.info("TYYL_050 未找到分页组件");
+            }
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     @Test
     @DisplayName("TYYL_051: 每页条数切换")
     public void test_TYYL_051() {
-        Locator pagination = page.locator(".el-pagination").first();
-        if (!pagination.isVisible()) {
-            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
             page.waitForTimeout(1000);
-            pagination = page.locator(".el-pagination").first();
-        }
 
-        if (pagination.isVisible()) {
-            Locator pageSizeSelect = pagination.locator(".el-select").first();
-            if (pageSizeSelect.isVisible()) {
-                pageSizeSelect.click();
-                page.waitForTimeout(300);
+            Locator pagination = page.locator(".el-pagination").first();
+            if (!pagination.isVisible()) {
+                reqPage.doubleClickTreeNode(folder[1]);
+                page.waitForTimeout(1000);
+                pagination = page.locator(".el-pagination").first();
+            }
 
-                Locator option = page.locator(".el-select-dropdown__item").first();
-                if (option.isVisible()) {
-                    option.click();
-                    page.waitForTimeout(500);
-                    log.info("TYYL_051 每页条数切换成功");
+            if (pagination.isVisible()) {
+                Locator pageSizeSelect = pagination.locator(".el-select").first();
+                if (pageSizeSelect.isVisible()) {
+                    pageSizeSelect.click();
+                    page.waitForTimeout(300);
+
+                    Locator option = page.locator(".el-select-dropdown__item").first();
+                    if (option.isVisible()) {
+                        option.click();
+                        page.waitForTimeout(500);
+                        log.info("TYYL_051 每页条数切换成功");
+                    } else {
+                        log.info("TYYL_051 未找到下拉选项");
+                    }
                 } else {
-                    log.info("TYYL_051 未找到下拉选项");
+                    log.info("TYYL_051 未找到每页条数下拉框");
                 }
             } else {
-                log.info("TYYL_051 未找到每页条数下拉框");
+                log.info("TYYL_051 未找到分页组件");
             }
-        } else {
-            log.info("TYYL_051 未找到分页组件");
+        } finally {
+            cleanupFolderByName(folder[1]);
         }
     }
 
     // ========== 弹框通用UI用例 ==========
 
-    private void openSampleDialog() {
-        reqPage.rightClickTreeNode(TestConstants.REQ_NAME1);
+    private String[] openSampleDialog() {
+        String[] doc = createTempDoc();
+        reqPage.refreshTree();
+        page.waitForTimeout(1000);
+
+        reqPage.rightClickTreeNode(doc[1]);
         page.waitForTimeout(500);
         page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(1000);
+        return doc;
     }
 
     @Test
     @DisplayName("TYYL_052: 弹窗关闭")
     public void test_TYYL_052() {
-        openSampleDialog();
-
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn, [class*='close']").first();
-            if (closeBtn.isVisible()) {
-                closeBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_052 弹窗关闭成功");
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn, [class*='close']").first();
+                if (closeBtn.isVisible()) {
+                    closeBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_052 弹窗关闭成功");
+                } else {
+                    log.info("TYYL_052 未找到关闭按钮");
+                }
             } else {
-                log.info("TYYL_052 未找到关闭按钮");
+                log.info("TYYL_052 弹窗未打开");
             }
-        } else {
-            log.info("TYYL_052 弹窗未打开");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("TYYL_053: 弹窗确认")
     public void test_TYYL_053() {
-        openSampleDialog();
-
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator confirmBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确 定"));
-            if (!confirmBtn.isVisible()) {
-                confirmBtn = dialog.locator("button").filter(new Locator.FilterOptions().setHasText("确定")).first();
-            }
-            if (confirmBtn.isVisible()) {
-                confirmBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_053 弹窗确认成功");
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator confirmBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确 定"));
+                if (!confirmBtn.isVisible()) {
+                    confirmBtn = dialog.locator("button").filter(new Locator.FilterOptions().setHasText("确定")).first();
+                }
+                if (confirmBtn.isVisible()) {
+                    confirmBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_053 弹窗确认成功");
+                } else {
+                    log.info("TYYL_053 未找到确认按钮");
+                }
             } else {
-                log.info("TYYL_053 未找到确认按钮");
+                log.info("TYYL_053 弹窗未打开");
             }
-        } else {
-            log.info("TYYL_053 弹窗未打开");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("TYYL_054: 弹窗取消")
     public void test_TYYL_054() {
-        openSampleDialog();
-
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator cancelBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消"));
-            if (!cancelBtn.isVisible()) {
-                cancelBtn = dialog.locator("button").filter(new Locator.FilterOptions().setHasText("取消")).first();
-            }
-            if (cancelBtn.isVisible()) {
-                cancelBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_054 弹窗取消成功");
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator cancelBtn = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消"));
+                if (!cancelBtn.isVisible()) {
+                    cancelBtn = dialog.locator("button").filter(new Locator.FilterOptions().setHasText("取消")).first();
+                }
+                if (cancelBtn.isVisible()) {
+                    cancelBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_054 弹窗取消成功");
+                } else {
+                    log.info("TYYL_054 未找到取消按钮");
+                }
             } else {
-                log.info("TYYL_054 未找到取消按钮");
+                log.info("TYYL_054 弹窗未打开");
             }
-        } else {
-            log.info("TYYL_054 弹窗未打开");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("TYYL_055: 弹窗最大最小化")
     public void test_TYYL_055() {
-        openSampleDialog();
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator maxBtn = page.locator("[class*='maximize'], [class*='max'], .el-icon-full-screen").first();
+                if (maxBtn.isVisible()) {
+                    maxBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_055 弹窗最大化成功");
+                } else {
+                    log.info("TYYL_055 未找到最大化按钮");
+                }
 
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator maxBtn = page.locator("[class*='maximize'], [class*='max'], .el-icon-full-screen").first();
-            if (maxBtn.isVisible()) {
-                maxBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_055 弹窗最大化成功");
+                Locator minBtn = page.locator("[class*='minimize'], [class*='min'], .el-icon-minus").first();
+                if (minBtn.isVisible()) {
+                    minBtn.click();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_055 弹窗最小化成功");
+                } else {
+                    log.info("TYYL_055 未找到最小化按钮");
+                }
+
+                Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
+                if (closeBtn.isVisible()) closeBtn.click();
+                page.waitForTimeout(300);
             } else {
-                log.info("TYYL_055 未找到最大化按钮");
+                log.info("TYYL_055 弹窗未打开");
             }
-
-            Locator minBtn = page.locator("[class*='minimize'], [class*='min'], .el-icon-minus").first();
-            if (minBtn.isVisible()) {
-                minBtn.click();
-                page.waitForTimeout(500);
-                log.info("TYYL_055 弹窗最小化成功");
-            } else {
-                log.info("TYYL_055 未找到最小化按钮");
-            }
-
-            Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
-            if (closeBtn.isVisible()) closeBtn.click();
-            page.waitForTimeout(300);
-        } else {
-            log.info("TYYL_055 弹窗未打开");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("TYYL_056: 弹窗拖拽")
     public void test_TYYL_056() {
-        openSampleDialog();
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator header = dialog.locator(".el-dialog__header, .el-dialog__title").first();
+                if (header.isVisible()) {
+                    header.hover();
+                    page.mouse().down();
+                    page.mouse().move(100, 50);
+                    page.mouse().up();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_056 弹窗拖拽成功");
+                } else {
+                    log.info("TYYL_056 未找到弹窗标题栏");
+                }
 
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator header = dialog.locator(".el-dialog__header, .el-dialog__title").first();
-            if (header.isVisible()) {
-                header.hover();
-                page.mouse().down();
-                page.mouse().move(100, 50);
-                page.mouse().up();
-                page.waitForTimeout(500);
-                log.info("TYYL_056 弹窗拖拽成功");
+                Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
+                if (closeBtn.isVisible()) closeBtn.click();
+                page.waitForTimeout(300);
             } else {
-                log.info("TYYL_056 未找到弹窗标题栏");
+                log.info("TYYL_056 弹窗未打开");
             }
-
-            Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
-            if (closeBtn.isVisible()) closeBtn.click();
-            page.waitForTimeout(300);
-        } else {
-            log.info("TYYL_056 弹窗未打开");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("TYYL_057: 弹窗尺寸调整")
     public void test_TYYL_057() {
-        openSampleDialog();
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator resizeHandle = page.locator("[class*='resize'], [class*='handle']").first();
+                if (resizeHandle.isVisible()) {
+                    resizeHandle.hover();
+                    page.mouse().down();
+                    page.mouse().move(50, 50);
+                    page.mouse().up();
+                    page.waitForTimeout(500);
+                    log.info("TYYL_057 弹窗尺寸调整成功");
+                } else {
+                    log.info("TYYL_057 未找到尺寸调整手柄");
+                }
 
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator resizeHandle = page.locator("[class*='resize'], [class*='handle']").first();
-            if (resizeHandle.isVisible()) {
-                resizeHandle.hover();
-                page.mouse().down();
-                page.mouse().move(50, 50);
-                page.mouse().up();
-                page.waitForTimeout(500);
-                log.info("TYYL_057 弹窗尺寸调整成功");
+                Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
+                if (closeBtn.isVisible()) closeBtn.click();
+                page.waitForTimeout(300);
             } else {
-                log.info("TYYL_057 未找到尺寸调整手柄");
+                log.info("TYYL_057 弹窗未打开");
             }
-
-            Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
-            if (closeBtn.isVisible()) closeBtn.click();
-            page.waitForTimeout(300);
-        } else {
-            log.info("TYYL_057 弹窗未打开");
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("TYYL_058: 弹窗内容滚动")
     public void test_TYYL_058() {
-        openSampleDialog();
-
-        Locator dialog = page.locator(".el-dialog").first();
-        if (dialog.isVisible()) {
-            Locator body = dialog.locator(".el-dialog__body").first();
-            if (body.isVisible()) {
-                Object result = body.evaluate("el => el.scrollHeight > el.clientHeight", null);
-                boolean scrollable = result instanceof Boolean && (Boolean) result;
-                if (scrollable) {
-                    body.evaluate("el => el.scrollTop = el.scrollHeight", null);
-                    page.waitForTimeout(300);
-                    log.info("TYYL_058 弹窗内容滚动成功");
+        String[] doc = openSampleDialog();
+        try {
+            Locator dialog = page.locator(".el-dialog").first();
+            if (dialog.isVisible()) {
+                Locator body = dialog.locator(".el-dialog__body").first();
+                if (body.isVisible()) {
+                    Object result = body.evaluate("el => el.scrollHeight > el.clientHeight", null);
+                    boolean scrollable = result instanceof Boolean && (Boolean) result;
+                    if (scrollable) {
+                        body.evaluate("el => el.scrollTop = el.scrollHeight", null);
+                        page.waitForTimeout(300);
+                        log.info("TYYL_058 弹窗内容滚动成功");
+                    } else {
+                        log.info("TYYL_058 弹窗内容无需滚动（内容未溢出）");
+                    }
                 } else {
-                    log.info("TYYL_058 弹窗内容无需滚动（内容未溢出）");
+                    log.info("TYYL_058 未找到弹窗内容区域");
                 }
-            } else {
-                log.info("TYYL_058 未找到弹窗内容区域");
-            }
 
-            Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
-            if (closeBtn.isVisible()) closeBtn.click();
-            page.waitForTimeout(300);
-        } else {
-            log.info("TYYL_058 弹窗未打开");
+                Locator closeBtn = dialog.locator(".el-dialog__close, .el-dialog__headerbtn").first();
+                if (closeBtn.isVisible()) closeBtn.click();
+                page.waitForTimeout(300);
+            } else {
+                log.info("TYYL_058 弹窗未打开");
+            }
+        } finally {
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 

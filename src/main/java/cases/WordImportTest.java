@@ -25,164 +25,199 @@ public class WordImportTest extends BaseTest {
     @Test
     @DisplayName("GNYL_034: 进入导入Excel弹框")
     void test_GNYL_034_EnterImportExcelDialog() {
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator dialog = page.locator(".el-dialog").first();
-        assertThat(dialog).isVisible();
-        log.info("GNYL_034 成功进入导入Excel弹框");
-        closeDialogs();
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
+
+            Locator dialog = page.locator(".el-dialog").first();
+            assertThat(dialog).isVisible();
+            log.info("GNYL_034 成功进入导入Excel弹框");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_038: 下载Excel模板")
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void test_GNYL_038_downloadExcelTemplate() {
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator downloadBtn = page.getByText("下载模板EXCEL", new Page.GetByTextOptions().setExact(true));
-        Assumptions.assumeTrue(downloadBtn.isVisible(), "未找到下载模板按钮");
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
 
-        final int[] statusCode = {0};
-        final String[] responseBody = {""};
-        page.onResponse(response -> {
-            if (response.url().contains("downloadReqImportTemplate")) {
-                statusCode[0] = response.status();
-                try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+            Locator downloadBtn = page.getByText("下载模板EXCEL", new Page.GetByTextOptions().setExact(true));
+            Assumptions.assumeTrue(downloadBtn.isVisible(), "未找到下载模板按钮");
+
+            final int[] statusCode = {0};
+            final String[] responseBody = {""};
+            page.onResponse(response -> {
+                if (response.url().contains("downloadReqImportTemplate")) {
+                    statusCode[0] = response.status();
+                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+                }
+            });
+
+            downloadBtn.click();
+            page.waitForTimeout(3000);
+
+            if (statusCode[0] == 500) {
+                String msg = responseBody[0];
+                if (msg.contains("\"msg\"")) {
+                    int start = msg.indexOf("\"msg\":\"") + 7;
+                    int end = msg.indexOf("\"", start);
+                    msg = msg.substring(start, end);
+                }
+                Assumptions.assumeTrue(false, msg);
             }
-        });
-
-        downloadBtn.click();
-        page.waitForTimeout(3000);
-        closeDialogs();
-
-        if (statusCode[0] == 500) {
-            String msg = responseBody[0];
-            if (msg.contains("\"msg\"")) {
-                int start = msg.indexOf("\"msg\":\"") + 7;
-                int end = msg.indexOf("\"", start);
-                msg = msg.substring(start, end);
-            }
-            Assumptions.assumeTrue(false, msg);
+            log.info("GNYL_038 Excel模板下载成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
-        log.info("GNYL_038 Excel模板下载成功");
     }
 
     @Test
     @DisplayName("GNYL_040: 导入Excel")
     void test_GNYL_040_importExcel() {
-        page.locator("#app").getByText("测试父文件夹")
-                .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
+            page.locator("#app").getByText(folder[1])
+                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
 
-        page.getByText("请选择").first().click();
-        page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("Sheet1")).click();
-        page.waitForTimeout(500);
+            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 标题 请选择"))
-                .getByRole(AriaRole.IMG).click();
-        page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("标题")).click();
-        page.waitForTimeout(300);
+            page.getByText("请选择").first().click();
+            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("Sheet1")).click();
+            page.waitForTimeout(500);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 内容 请选择"))
-                .getByRole(AriaRole.IMG).click();
-        page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("内容")).click();
-        page.waitForTimeout(300);
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 标题 请选择"))
+                    .getByRole(AriaRole.IMG).click();
+            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("标题")).click();
+            page.waitForTimeout(300);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 层级 请选择"))
-                .getByRole(AriaRole.IMG).click();
-        page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("*层级代号")).click();
-        page.waitForTimeout(300);
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 内容 请选择"))
+                    .getByRole(AriaRole.IMG).click();
+            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("内容")).click();
+            page.waitForTimeout(300);
 
-        final int[] statusCode = {0};
-        final String[] responseBody = {""};
-        page.onResponse(response -> {
-            if (response.url().contains("importReqSpecification")) {
-                statusCode[0] = response.status();
-                try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-            }
-        });
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 层级 请选择"))
+                    .getByRole(AriaRole.IMG).click();
+            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("*层级代号")).click();
+            page.waitForTimeout(300);
 
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-        page.waitForTimeout(3000);
+            final int[] statusCode = {0};
+            final String[] responseBody = {""};
+            page.onResponse(response -> {
+                if (response.url().contains("importReqSpecification")) {
+                    statusCode[0] = response.status();
+                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+                }
+            });
 
-        closeDialogs();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
+            page.waitForTimeout(3000);
 
-        Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
-        Assertions.assertTrue(responseBody[0].contains("操作成功"), "导入失败: " + responseBody[0]);
-        log.info("GNYL_040 Excel导入成功");
+            Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
+            Assertions.assertTrue(responseBody[0].contains("操作成功"), "导入失败: " + responseBody[0]);
+            log.info("GNYL_040 Excel导入成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_042: 需求规格标题必填测试")
     void test_GNYL_042_emptyTitle() {
         String parentId = resolveParentId();
-        String payload = """
-            {
-                "parentId": "%s",
-                "type": "reqSpeFolder",
-                "reqSpecName": "",
-                "data": [{"level": 1, "title": "功能需求"}],
-                "projectId": "%s"
-            }
-            """.formatted(parentId, PROJECT_ID);
+        try {
+            String payload = """
+                {
+                    "parentId": "%s",
+                    "type": "reqSpeFolder",
+                    "reqSpecName": "",
+                    "data": [{"level": 1, "title": "功能需求"}],
+                    "projectId": "%s"
+                }
+                """.formatted(parentId, PROJECT_ID);
 
-        String resp = postImport(payload);
-        Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
-                "标题为空应拦截: " + resp);
-        log.info("GNYL_042 标题必填拦截通过");
+            String resp = postImport(payload);
+            Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
+                    "标题为空应拦截: " + resp);
+            log.info("GNYL_042 标题必填拦截通过");
+        } finally {
+            cleanupByName("AT_Import_");
+        }
     }
 
     @Test
     @DisplayName("GNYL_043: 工作表必选测试")
     void test_GNYL_043_noWorksheet() {
         String parentId = resolveParentId();
-        String payload = """
-            {
-                "parentId": "%s",
-                "type": "reqSpeFolder",
-                "reqSpecName": "测试导入",
-                "projectId": "%s"
-            }
-            """.formatted(parentId, PROJECT_ID);
+        try {
+            String payload = """
+                {
+                    "parentId": "%s",
+                    "type": "reqSpeFolder",
+                    "reqSpecName": "测试导入",
+                    "projectId": "%s"
+                }
+                """.formatted(parentId, PROJECT_ID);
 
-        String resp = postImport(payload);
-        Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
-                "未选工作表应拦截: " + resp);
-        log.info("GNYL_043 工作表必选拦截通过");
+            String resp = postImport(payload);
+            Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
+                    "未选工作表应拦截: " + resp);
+            log.info("GNYL_043 工作表必选拦截通过");
+        } finally {
+            cleanupByName("AT_Import_");
+        }
     }
 
     @Test
     @DisplayName("GNYL_044: 实体属性必选测试")
     void test_GNYL_044_noAttribute() {
         String parentId = resolveParentId();
-        String payload = """
-            {
-                "parentId": "%s",
-                "type": "reqSpeFolder",
-                "reqSpecName": "测试导入",
-                "data": [],
-                "projectId": "%s"
-            }
-            """.formatted(parentId, PROJECT_ID);
+        try {
+            String payload = """
+                {
+                    "parentId": "%s",
+                    "type": "reqSpeFolder",
+                    "reqSpecName": "测试导入",
+                    "data": [],
+                    "projectId": "%s"
+                }
+                """.formatted(parentId, PROJECT_ID);
 
-        String resp = postImport(payload);
-        Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
-                "未选属性应拦截: " + resp);
-        log.info("GNYL_044 实体属性必选拦截通过");
+            String resp = postImport(payload);
+            Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
+                    "未选属性应拦截: " + resp);
+            log.info("GNYL_044 实体属性必选拦截通过");
+        } finally {
+            cleanupByName("AT_Import_");
+        }
     }
 
     // ==================== Word import tests ====================
@@ -190,205 +225,241 @@ public class WordImportTest extends BaseTest {
     @Test
     @DisplayName("GNYL_045: 进入导入Word弹框")
     void test_GNYL_045_EnterImportWordDialog() {
-        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.PARENT_FOLDER))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            page.waitForTimeout(1000);
 
-        Locator dialog = page.locator(".el-dialog").first();
-        assertThat(dialog).isVisible();
-        log.info("GNYL_045 成功进入导入Word弹框");
-        closeDialogs();
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(folder[1]))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
+
+            Locator dialog = page.locator(".el-dialog").first();
+            assertThat(dialog).isVisible();
+            log.info("GNYL_045 成功进入导入Word弹框");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_046: 右键文件夹进入导入Word弹框")
     void test_GNYL_046_rightClickFolderEnterWordDialog() {
-        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            page.waitForTimeout(1000);
 
-        Locator dialog = page.locator(".el-dialog").first();
-        assertThat(dialog).isVisible();
-        log.info("GNYL_046 右键文件夹进入导入Word弹框成功");
-        closeDialogs();
+            reqPage.rightClickTreeNode(folder[1]);
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
+
+            Locator dialog = page.locator(".el-dialog").first();
+            assertThat(dialog).isVisible();
+            log.info("GNYL_046 右键文件夹进入导入Word弹框成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_047: 文件夹列表进入导入Word弹框")
     void test_GNYL_047_folderListEnterWordDialog() {
-        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).first().click();
-        page.waitForTimeout(500);
-        page.getByText("导入Word", new Page.GetByTextOptions().setExact(true)).first().click();
-        page.waitForTimeout(1000);
+            reqPage.doubleClickTreeNode(folder[1]);
+            page.waitForTimeout(1000);
 
-        Locator dialog = page.locator(".el-dialog").first();
-        assertThat(dialog).isVisible();
-        log.info("GNYL_047 文件夹列表进入导入Word弹框成功");
-        closeDialogs();
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).first().click();
+            page.waitForTimeout(500);
+            page.getByText("导入Word", new Page.GetByTextOptions().setExact(true)).first().click();
+            page.waitForTimeout(1000);
+
+            Locator dialog = page.locator(".el-dialog").first();
+            assertThat(dialog).isVisible();
+            log.info("GNYL_047 文件夹列表进入导入Word弹框成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_048: 下载Word模板")
     void test_GNYL_048_downloadTemplate() {
-        openImportWordDialog();
+        String[] folder = openImportWordDialog();
+        try {
+            page.getByText("下载模板WORD", new Page.GetByTextOptions().setExact(true)).click();
 
-        page.getByText("下载模板WORD", new Page.GetByTextOptions().setExact(true)).click();
+            final int[] statusCode = {0};
+            final String[] responseBody = {""};
+            page.onResponse(response -> {
+                if (response.url().contains("downloadReqImportTemplate")) {
+                    statusCode[0] = response.status();
+                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+                }
+            });
 
-        final int[] statusCode = {0};
-        final String[] responseBody = {""};
-        page.onResponse(response -> {
-            if (response.url().contains("downloadReqImportTemplate")) {
-                statusCode[0] = response.status();
-                try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+            if (statusCode[0] == 500) {
+                String msg = responseBody[0];
+                if (msg.contains("\"msg\"")) {
+                    int start = msg.indexOf("\"msg\":\"") + 7;
+                    int end = msg.indexOf("\"", start);
+                    msg = msg.substring(start, end);
+                }
+                Assumptions.assumeTrue(false, msg);
             }
-        });
-
-        closeDialogs();
-
-        if (statusCode[0] == 500) {
-            String msg = responseBody[0];
-            if (msg.contains("\"msg\"")) {
-                int start = msg.indexOf("\"msg\":\"") + 7;
-                int end = msg.indexOf("\"", start);
-                msg = msg.substring(start, end);
-            }
-            Assumptions.assumeTrue(false, msg);
+            log.info("GNYL_048 Word模板下载成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
-        log.info("GNYL_048 Word模板下载成功");
     }
 
     @Test
     @DisplayName("GNYL_049: 上传Word文件")
     void test_GNYL_049_uploadFile() {
-        openImportWordDialog();
+        String[] folder = openImportWordDialog();
+        try {
+            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
+            page.waitForTimeout(3000);
 
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-        page.waitForTimeout(3000);
-
-        closeDialogs();
-
-        String docId = api.findNodeIdByTitle(PROJECT_ID, "需求导入模板W");
-        log.info("GNYL_049 文件上传完成, docId={}", docId);
+            String docId = api.findNodeIdByTitle(PROJECT_ID, "需求导入模板W");
+            log.info("GNYL_049 文件上传完成, docId={}", docId);
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_050: 上传Word后验证标题自动填充")
     void test_GNYL_050_verifyAutoFill() {
-        openImportWordDialog();
+        String[] folder = openImportWordDialog();
+        try {
+            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
-
-        Locator fileName = page.getByText("需求导入模板W");
-        assertThat(fileName).isVisible();
-        log.info("GNYL_050 文件名展示正确");
-
-        closeDialogs();
+            Locator fileName = page.getByText("需求导入模板W");
+            assertThat(fileName).isVisible();
+            log.info("GNYL_050 文件名展示正确");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("GNYL_051: 导入Word数据")
     void test_GNYL_051_importWordData() {
-        openImportWordDialog();
+        String[] folder = openImportWordDialog();
+        try {
+            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(500);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(500);
+            final int[] statusCode = {0};
+            final String[] responseBody = {""};
+            page.onResponse(response -> {
+                if (response.url().contains("importReqSpecification")) {
+                    statusCode[0] = response.status();
+                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+                }
+            });
 
-        final int[] statusCode = {0};
-        final String[] responseBody = {""};
-        page.onResponse(response -> {
-            if (response.url().contains("importReqSpecification")) {
-                statusCode[0] = response.status();
-                try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-            }
-        });
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
+            page.waitForTimeout(2000);
 
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-        page.waitForTimeout(2000);
-
-        closeDialogs();
-
-        Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
-        log.info("GNYL_051 导入Word数据成功");
+            Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
+            log.info("GNYL_051 导入Word数据成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_052: 上传损坏的Word文件")
     void test_GNYL_052_uploadDamagedWord() {
-        openImportWordDialog();
+        String[] folder = openImportWordDialog();
+        try {
+            Path filePath = Paths.get(TEST_FILES_DIR + "损坏的需求规格.docx");
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "损坏的需求规格.docx");
+            final int[] statusCode = {0};
+            final String[] responseBody = {""};
 
-        final int[] statusCode = {0};
-        final String[] responseBody = {""};
+            page.onResponse(response -> {
+                String url = response.url();
+                if (url.contains("import") || url.contains("reqSpec") || url.contains("reqDoc")) {
+                    statusCode[0] = response.status();
+                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+                }
+            });
 
-        page.onResponse(response -> {
-            String url = response.url();
-            if (url.contains("import") || url.contains("reqSpec") || url.contains("reqDoc")) {
-                statusCode[0] = response.status();
-                try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(1000);
+
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
+            page.waitForTimeout(1000);
+
+            if (statusCode[0] == 0) {
+                Locator errorMsg = page.locator(
+                        ".el-message--error, .el-notification__content, .el-message-box__message").first();
+                if (errorMsg.isVisible()) {
+                    String msg = errorMsg.textContent();
+                    log.info("GNYL_052 前端直接拦截了损坏文件: {}", msg);
+                    return;
+                }
             }
-        });
 
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(1000);
-
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-        page.waitForTimeout(1000);
-
-        if (statusCode[0] == 0) {
-            Locator errorMsg = page.locator(
-                    ".el-message--error, .el-notification__content, .el-message-box__message").first();
-            if (errorMsg.isVisible()) {
-                String msg = errorMsg.textContent();
-                log.info("GNYL_052 前端直接拦截了损坏文件: {}", msg);
-                closeDialogs();
-                return;
+            if (statusCode[0] != 0) {
+                Assertions.assertEquals(500, statusCode[0], "损坏文件应返回500, 实际: " + statusCode[0]);
             }
+            log.info("GNYL_052 损坏文件拦截通过, statusCode={}", statusCode[0]);
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
-
-        closeDialogs();
-
-        if (statusCode[0] != 0) {
-            Assertions.assertEquals(500, statusCode[0], "损坏文件应返回500, 实际: " + statusCode[0]);
-        }
-        log.info("GNYL_052 损坏文件拦截通过, statusCode={}", statusCode[0]);
     }
 
     @Test
     @DisplayName("GNYL_053: 上传Excel文件验证前端拦截")
     void test_GNYL_053_uploadExcelToWordDialog() {
-        openImportWordDialog();
+        String[] folder = openImportWordDialog();
+        try {
+            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
-
-        Locator errorMsg = page.getByText("请上传Word文件");
-        assertThat(errorMsg).isVisible();
-        log.info("GNYL_053 Excel文件前端拦截通过");
-        closeDialogs();
+            Locator errorMsg = page.getByText("请上传Word文件");
+            assertThat(errorMsg).isVisible();
+            log.info("GNYL_053 Excel文件前端拦截通过");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     // ==================== ReqIF import tests ====================
@@ -396,17 +467,25 @@ public class WordImportTest extends BaseTest {
     @Test
     @DisplayName("GNYL_053_reqif: 进入导入ReqIF弹框")
     void test_GNYL_053_reqif_EnterImportReqIfDialog() {
-        page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName("测试父文件夹"))
-                .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Locator dialog = page.locator(".el-dialog").first();
-        assertThat(dialog).isVisible();
-        log.info("GNYL_053_reqif 成功进入导入ReqIF弹框");
-        closeDialogs();
+            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
+                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
+
+            Locator dialog = page.locator(".el-dialog").first();
+            assertThat(dialog).isVisible();
+            log.info("GNYL_053_reqif 成功进入导入ReqIF弹框");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
@@ -417,87 +496,115 @@ public class WordImportTest extends BaseTest {
     @Test
     @DisplayName("GNYL_055: 上传ReqIf文件")
     void test_GNYL_055_uploadReqIfFile() {
-        Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName("测试父文件夹"))
-                .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+            Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
 
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
+            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
+                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
 
-        log.info("GNYL_055 ReqIf文件上传完成");
-        closeDialogs();
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
+
+            log.info("GNYL_055 ReqIf文件上传完成");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_056: 参数设置")
     void test_GNYL_056_parameterSettings() {
-        page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName("测试父文件夹"))
-                .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
+            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
+                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
 
-        Locator dialog = page.locator(".el-dialog").first();
-        assertThat(dialog).isVisible();
-        log.info("GNYL_056 参数设置页面可见");
-        closeDialogs();
+            Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
+
+            Locator dialog = page.locator(".el-dialog").first();
+            assertThat(dialog).isVisible();
+            log.info("GNYL_056 参数设置页面可见");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     @Test
     @DisplayName("GNYL_057: 导入ReqIF数据")
     void test_GNYL_057_importReqIfData() {
-        page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName("测试父文件夹"))
-                .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-        page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
+        String[] folder = createTempFolder();
+        try {
+            reqPage.refreshTree();
+            page.waitForTimeout(1000);
 
-        Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
-        page.locator("input[type='file']").setInputFiles(filePath);
-        page.waitForTimeout(2000);
+            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
+                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
 
-        final int[] statusCode = {0};
-        final String[] responseBody = {""};
-        page.onResponse(response -> {
-            if (response.url().contains("importReqIfFile")) {
-                statusCode[0] = response.status();
-                try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-            }
-        });
+            Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
+            page.locator("input[type='file']").setInputFiles(filePath);
+            page.waitForTimeout(2000);
 
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-        page.waitForTimeout(5000);
+            final int[] statusCode = {0};
+            final String[] responseBody = {""};
+            page.onResponse(response -> {
+                if (response.url().contains("importReqIfFile")) {
+                    statusCode[0] = response.status();
+                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
+                }
+            });
 
-        closeDialogs();
+            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
+            page.waitForTimeout(5000);
 
-        Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
-        Assertions.assertTrue(responseBody[0].contains("导入成功"), "导入失败: " + responseBody[0]);
-        log.info("GNYL_057 导入ReqIF成功");
+            Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
+            Assertions.assertTrue(responseBody[0].contains("导入成功"), "导入失败: " + responseBody[0]);
+            log.info("GNYL_057 导入ReqIF成功");
+        } finally {
+            closeDialogs();
+            cleanupFolderByName(folder[1]);
+        }
     }
 
     // ==================== Private helpers ====================
 
-    private void openImportWordDialog() {
+    private String[] openImportWordDialog() {
+        String[] folder = createTempFolder();
+        reqPage.refreshTree();
+        page.waitForTimeout(1000);
+
         reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.PARENT_FOLDER))
+        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(folder[1]))
                 .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
         page.waitForTimeout(500);
         page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
         page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(1000);
+        return folder;
     }
 
     private String postImport(String payload) {
