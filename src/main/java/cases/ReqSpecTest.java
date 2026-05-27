@@ -1,6 +1,5 @@
 package cases;
 
-import actions.ReqApiActions;
 import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -8,73 +7,11 @@ import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.MouseButton;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
-
-import java.util.UUID;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ReqSpecTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(ReqSpecTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    private static final String PROJECT_ID = TestConstants.PROJECT_ID;
-
-    @BeforeAll
-    public void init() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
-
-    // ========== 工具方法 ==========
-
-    private String suffix() {
-        return UUID.randomUUID().toString().substring(0, 6);
-    }
-
-    private String[] createTempFolder() {
-        String name = "Sp_Folder_" + suffix();
-        String id = api.createFolder(PROJECT_ID, PROJECT_ID);
-        api.renameFolder(PROJECT_ID, id, PROJECT_ID, name);
-        return new String[]{id, name};
-    }
-
-    private String[] createTempDoc(String parentId) {
-        String name = "Sp_Doc_" + suffix();
-        String id = api.createDocument(PROJECT_ID, parentId);
-        api.renameDocument(PROJECT_ID, id, parentId, name);
-        return new String[]{id, name};
-    }
-
-    private void cleanupFolder(String folderName) {
-        try {
-            api.cleanFolderByName(PROJECT_ID, folderName);
-        } catch (Exception e) {
-            log.warn("清理文件夹 {} 失败: {}", folderName, e.getMessage());
-        }
-    }
-
-    private void closeDialogs() {
-        try {
-            while (page != null &&
-                    page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible").count() > 0) {
-                page.keyboard().press("Escape");
-                page.waitForTimeout(300);
-            }
-        } catch (Exception e) {
-            log.warn("清理残留弹窗异常: {}", e.getMessage());
-        }
-    }
 
     // ========== 测试用例 ==========
 
@@ -85,7 +22,7 @@ public class ReqSpecTest extends BaseTest {
         try {
             page.waitForTimeout(500);
 
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -97,13 +34,12 @@ public class ReqSpecTest extends BaseTest {
             page.getByText("需求规格", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
-            String docName = rPage.createDocumentAndGetName();
+            String docName = reqPage.createDocumentAndGetName();
             String newName = "Spec_073_" + suffix();
-            rPage.renameFolder(docName, newName);
+            reqPage.renameFolder(docName, newName);
             log.info("GNYL_073 根节点列表右键新建需求规格成功: {}", newName);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -114,7 +50,7 @@ public class ReqSpecTest extends BaseTest {
         try {
             page.waitForTimeout(500);
 
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -126,13 +62,12 @@ public class ReqSpecTest extends BaseTest {
             page.getByText("需求规格", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
-            String docName = rPage.createDocumentAndGetName();
+            String docName = reqPage.createDocumentAndGetName();
             String newName = "Spec_074_" + suffix();
-            rPage.renameFolder(docName, newName);
+            reqPage.renameFolder(docName, newName);
             log.info("GNYL_074 文件夹列表右键新建需求规格成功: {}", newName);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -143,7 +78,7 @@ public class ReqSpecTest extends BaseTest {
         try {
             page.waitForTimeout(500);
 
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -155,13 +90,12 @@ public class ReqSpecTest extends BaseTest {
             page.getByText("需求规格", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
-            String docName = rPage.createDocumentAndGetName();
+            String docName = reqPage.createDocumentAndGetName();
             String newName = "Spec_075_" + suffix();
-            rPage.renameFolder(docName, newName);
+            reqPage.renameFolder(docName, newName);
             log.info("GNYL_075 文件夹下新增需求规格成功: {}", newName);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -172,7 +106,7 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.TREEITEM,
@@ -184,13 +118,12 @@ public class ReqSpecTest extends BaseTest {
             page.getByText("需求规格", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
-            String newDocName = rPage.createDocumentAndGetName();
+            String newDocName = reqPage.createDocumentAndGetName();
             String newName = "Spec_076_Sibling_" + suffix();
-            rPage.renameFolder(newDocName, newName);
+            reqPage.renameFolder(newDocName, newName);
             log.info("GNYL_076 需求规格下新建同级需求规格成功: {}", newName);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -201,7 +134,7 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -213,13 +146,12 @@ public class ReqSpecTest extends BaseTest {
             page.getByText("需求规格", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
-            String newDocName = rPage.createDocumentAndGetName();
+            String newDocName = reqPage.createDocumentAndGetName();
             String newName = "Spec_077_Sibling_" + suffix();
-            rPage.renameFolder(newDocName, newName);
+            reqPage.renameFolder(newDocName, newName);
             log.info("GNYL_077 文件夹列表右键需求规格新建同级成功: {}", newName);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -230,10 +162,10 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
-            rPage.openFolderAndActivateEdit(folder[1], doc[1]);
+            reqPage.openFolderAndActivateEdit(folder[1], doc[1]);
             page.waitForTimeout(500);
 
             Locator nameTd = page.getByRole(AriaRole.CELL,
@@ -249,10 +181,9 @@ public class ReqSpecTest extends BaseTest {
 
             log.info("GNYL_079 列表双击修改需求规格名称成功");
 
-            // 恢复原名
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
-            rPage.openFolderAndActivateEdit(folder[1], editedName);
+            reqPage.openFolderAndActivateEdit(folder[1], editedName);
             page.waitForTimeout(500);
             page.getByRole(AriaRole.CELL,
                     new Page.GetByRoleOptions().setName(editedName)).first().dblclick();
@@ -262,8 +193,7 @@ public class ReqSpecTest extends BaseTest {
             page.keyboard().press("Enter");
             page.waitForTimeout(500);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -275,7 +205,7 @@ public class ReqSpecTest extends BaseTest {
         String[] doc2 = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -303,8 +233,7 @@ public class ReqSpecTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -316,10 +245,10 @@ public class ReqSpecTest extends BaseTest {
         String[] doc2 = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
-            rPage.openFolderAndActivateEdit(folder[1], doc2[1]);
+            reqPage.openFolderAndActivateEdit(folder[1], doc2[1]);
             page.waitForTimeout(500);
 
             Locator nameCell = page.getByRole(AriaRole.CELL,
@@ -340,8 +269,7 @@ public class ReqSpecTest extends BaseTest {
                 log.info("GNYL_081 列表双击修改完成(无重复提示)");
             }
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -379,8 +307,7 @@ public class ReqSpecTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("关闭此对话框")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -391,10 +318,10 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
-            rPage.openFolderAndActivateEdit(folder[1], doc[1]);
+            reqPage.openFolderAndActivateEdit(folder[1], doc[1]);
             page.waitForTimeout(500);
 
             Locator descCell = page.getByRole(AriaRole.CELL,
@@ -410,8 +337,7 @@ public class ReqSpecTest extends BaseTest {
 
             log.info("GNYL_083 编辑需求规格描述成功");
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -422,7 +348,7 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -434,8 +360,7 @@ public class ReqSpecTest extends BaseTest {
 
             log.info("GNYL_085 删除需求规格成功: {}", doc[1]);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -446,7 +371,7 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -458,8 +383,7 @@ public class ReqSpecTest extends BaseTest {
 
             log.info("GNYL_087 取消删除需求规格成功: {}", doc[1]);
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -470,7 +394,7 @@ public class ReqSpecTest extends BaseTest {
         String[] doc = createTempDoc(folder[0]);
         try {
             page.waitForTimeout(500);
-            rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.ROW,
@@ -492,8 +416,7 @@ public class ReqSpecTest extends BaseTest {
 
             log.info("GNYL_089 清除需求规格成功");
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -528,8 +451,7 @@ public class ReqSpecTest extends BaseTest {
                 Assertions.assertTrue(resp.contains("200"), "查询失败: " + resp);
             }
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -565,8 +487,7 @@ public class ReqSpecTest extends BaseTest {
                 log.info("GNYL_093 搜索输入框不可见");
             }
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -637,8 +558,7 @@ public class ReqSpecTest extends BaseTest {
                 log.info("GNYL_095 搜索输入框不可见");
             }
         } finally {
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 }

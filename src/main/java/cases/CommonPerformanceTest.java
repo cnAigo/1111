@@ -2,15 +2,11 @@ package cases;
 
 import base.BaseTest;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CommonPerformanceTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(CommonPerformanceTest.class);
 
     @Test @DisplayName("XNYL_001: Excel导入速度测试 - 待实现")
     public void test_XNYL_001() { log.info("XNYL_001: Excel导入速度测试 - 待实现"); }

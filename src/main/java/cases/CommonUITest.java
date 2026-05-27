@@ -7,9 +7,6 @@ import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.MouseButton;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
 
 import java.nio.file.Paths;
 
@@ -18,25 +15,12 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CommonUITest extends BaseTest {
 
-    private static final Logger log = LoggerFactory.getLogger(CommonUITest.class);
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void init() {
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
-
     // ========== 需求顶部操作栏通用UI用例 ==========
 
     @Test
     @DisplayName("TYYL_001: 隐藏文件夹")
     public void test_TYYL_001() {
-        rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("显示文件夹")).click();
@@ -301,7 +285,7 @@ public class CommonUITest extends BaseTest {
     @Test
     @DisplayName("TYYL_041: 上传文件删除")
     public void test_TYYL_041() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         Locator importBtn = page.locator("button").filter(new Locator.FilterOptions().setHasText("导入")).first();
@@ -395,7 +379,7 @@ public class CommonUITest extends BaseTest {
     public void test_TYYL_049() {
         Locator pagination = page.locator(".el-pagination").first();
         if (!pagination.isVisible()) {
-            rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
             page.waitForTimeout(1000);
             pagination = page.locator(".el-pagination").first();
         }
@@ -430,7 +414,7 @@ public class CommonUITest extends BaseTest {
     public void test_TYYL_050() {
         Locator pagination = page.locator(".el-pagination").first();
         if (!pagination.isVisible()) {
-            rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
             page.waitForTimeout(1000);
             pagination = page.locator(".el-pagination").first();
         }
@@ -456,7 +440,7 @@ public class CommonUITest extends BaseTest {
     public void test_TYYL_051() {
         Locator pagination = page.locator(".el-pagination").first();
         if (!pagination.isVisible()) {
-            rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
             page.waitForTimeout(1000);
             pagination = page.locator(".el-pagination").first();
         }
@@ -486,7 +470,7 @@ public class CommonUITest extends BaseTest {
     // ========== 弹框通用UI用例 ==========
 
     private void openSampleDialog() {
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(500);
         page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(1000);

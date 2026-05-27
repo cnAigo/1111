@@ -38,6 +38,36 @@ public class ReqApiActions {
     private static final String ERM_ATTR_PUBLISH = "/erm/customAttribute/publishCustomAttribute";
     private static final String ERM_SEARCH_USER = "/common/search/searchUserByUser";
 
+    // Req Item CRUD
+    private static final String ERM_ADD_REQ = "/erm/add/addReq";
+    private static final String ERM_UPDATE_REQ_LIST = "/erm/update/updateReqList";
+    private static final String ERM_DEL_REQ_OBJECT = "/erm/del/delReqObjectList";
+    private static final String ERM_CLEAN_REQ = "/erm/clean/cleanReq";
+    private static final String ERM_RECOVER_REQ = "/erm/recover/recoverReq";
+    private static final String ERM_SEARCH_CHILD_REQ = "/erm/search/searchChildReqInfoByReqSpeId";
+
+    // View management
+    private static final String ERM_ADD_VIEW = "/erm/add/addReqSpeView";
+    private static final String ERM_DEL_VIEW = "/erm/del/delReqSpeView";
+    private static final String ERM_SEARCH_VIEW_LIST = "/erm/search/searchReqSpeViewList";
+
+    // Export
+    private static final String ERM_EXPORT_EXCEL = "/erm/exportExcelReqSpecification";
+    private static final String ERM_EXPORT_WORD = "/erm/exportWordReqSpecification";
+    private static final String ERM_EXPORT_REQIF = "/erm/reqIf/post/exportReqIf";
+    private static final String ERM_GET_ATOZ_PARAM = "/erm/reqIf/get/getAllAtozParam";
+
+    // Import
+    private static final String ERM_DOWNLOAD_TEMPLATE = "/erm/downloadReqImportTemplate";
+    private static final String ERM_GET_IMPORT_ATTRS = "/erm/import/getAttributes";
+
+    // Other
+    private static final String ERM_UNLOCK = "/erm/unlockModeForCloseWindow";
+    private static final String ERM_GET_ACCESS = "/erm/get/getReqAccess";
+    private static final String ERM_SEARCH_FOLDER_CHILDREN = "/erm/search/searchReqFolderChildrenList";
+    private static final String ERM_GET_VERSION_LIST = "/erm/search/getReqSpeVersionList";
+    private static final String ERM_GET_TEMPLATE_NAMES = "/erm/attr/get/getTemplateNames";
+
     private static final String PARENT_TYPE_FOLDER = "reqSpeFolder";
     private static final String PARENT_TYPE_PROJECT = "project";
 
@@ -413,6 +443,168 @@ public class ReqApiActions {
         return post(ERM_ATTR_UPDATE, payload);
     }
 
+    public String addReqItem(String projectId, String parentId, String parentReqSpeId) {
+        String payload = """
+                {
+                    "parentId": "%s",
+                    "projectId": "%s",
+                    "parentReqSpeId": "%s",
+                    "beforeLinkOrderNo": ""
+                }
+                """.formatted(parentId, projectId, parentReqSpeId);
+        String resp = post(ERM_ADD_REQ, payload);
+        return extractField(resp, "objectId");
+    }
+
+    public String addReqItemRaw(String projectId, String parentId, String parentReqSpeId) {
+        String payload = """
+                {
+                    "parentId": "%s",
+                    "projectId": "%s",
+                    "parentReqSpeId": "%s",
+                    "beforeLinkOrderNo": ""
+                }
+                """.formatted(parentId, projectId, parentReqSpeId);
+        return post(ERM_ADD_REQ, payload);
+    }
+
+    public String updateReqList(String reqSpeId, String reqListJson) {
+        String payload = """
+                {
+                    "reqSpeId": "%s",
+                    "reqList": %s
+                }
+                """.formatted(reqSpeId, reqListJson);
+        return post(ERM_UPDATE_REQ_LIST, payload);
+    }
+
+    public String deleteReqItem(String objectId) {
+        String payload = """
+                {"objectId": "%s"}
+                """.formatted(objectId);
+        return post(ERM_DEL_REQ_OBJECT, payload);
+    }
+
+    public String cleanReqItem(String objectId, String reqSpecId) {
+        String payload = """
+                {
+                    "objectId": "%s",
+                    "reqSpecId": "%s"
+                }
+                """.formatted(objectId, reqSpecId);
+        return post(ERM_CLEAN_REQ, payload);
+    }
+
+    public String recoverReqItem(String objectId) {
+        String payload = """
+                {"objectId": "%s"}
+                """.formatted(objectId);
+        return post(ERM_RECOVER_REQ, payload);
+    }
+
+    public String searchChildReqInfo(String reqSpeId) {
+        String payload = """
+                {"objectId": "%s"}
+                """.formatted(reqSpeId);
+        return post(ERM_SEARCH_CHILD_REQ, payload);
+    }
+
+    // ========== View management ==========
+
+    public String addView(String objectId, String name, String description, String viewHeaderValues) {
+        String payload = """
+                {
+                    "objectId": "%s",
+                    "viewHeaderValues": "%s",
+                    "name": "%s",
+                    "description": "%s"
+                }
+                """.formatted(objectId, viewHeaderValues, name, description);
+        return post(ERM_ADD_VIEW, payload);
+    }
+
+    public String deleteView(String objectId) {
+        String payload = """
+                {"objectId": "%s"}
+                """.formatted(objectId);
+        return post(ERM_DEL_VIEW, payload);
+    }
+
+    public String searchViewList(String objectId) {
+        String payload = """
+                {"objectId": "%s"}
+                """.formatted(objectId);
+        return post(ERM_SEARCH_VIEW_LIST, payload);
+    }
+
+    // ========== Export ==========
+
+    public APIResponse exportExcel(String objectId, String templateType) {
+        return request.get(TestConfig.API_PREFIX + ERM_EXPORT_EXCEL,
+                RequestOptions.create()
+                        .setQueryParam("objectId", objectId)
+                        .setQueryParam("templateType", templateType));
+    }
+
+    public APIResponse exportWord(String objectId, String templateType) {
+        return request.get(TestConfig.API_PREFIX + ERM_EXPORT_WORD,
+                RequestOptions.create()
+                        .setQueryParam("objectId", objectId)
+                        .setQueryParam("templateType", templateType));
+    }
+
+    public String getAllAtozParam(String projectId) {
+        return get(ERM_GET_ATOZ_PARAM + "?projectId=" + projectId
+                + "&businessDomain=需求管理&objectType=req");
+    }
+
+    public String exportReqIf(String payload) {
+        return post(ERM_EXPORT_REQIF, payload);
+    }
+
+    // ========== Import ==========
+
+    public APIResponse downloadImportTemplate(String templateType) {
+        return request.get(TestConfig.API_PREFIX + ERM_DOWNLOAD_TEMPLATE,
+                RequestOptions.create().setQueryParam("templateType", templateType));
+    }
+
+    public String getImportAttributes() {
+        return get(ERM_GET_IMPORT_ATTRS);
+    }
+
+    // ========== Other ==========
+
+    public String unlockMode(String objectId, String unlockMode, String person) {
+        String payload = """
+                {
+                    "objectId": "%s",
+                    "unlockMode": "%s",
+                    "unlockModePerson": "%s"
+                }
+                """.formatted(objectId, unlockMode, person);
+        return post(ERM_UNLOCK, payload);
+    }
+
+    public String getReqAccess(String objectId) {
+        return get(ERM_GET_ACCESS + "?objectId=" + objectId);
+    }
+
+    public String searchFolderChildren(String objectId) {
+        String payload = """
+                {"objectId": "%s"}
+                """.formatted(objectId);
+        return post(ERM_SEARCH_FOLDER_CHILDREN, payload);
+    }
+
+    public String getVersionList(String objectId) {
+        return get(ERM_GET_VERSION_LIST + "?objectId=" + objectId);
+    }
+
+    public String getTemplateNames(String projectId) {
+        return get(ERM_GET_TEMPLATE_NAMES + "?projectId=" + projectId);
+    }
+
     public String importReqSpecification(String projectId, String parentId, String reqSpecName, String dataJson) {
         String payload = """
                 {
@@ -498,6 +690,11 @@ public class ReqApiActions {
                         .setHeader("Content-Type", "application/json")
                         .setData(payload)
         );
+        return response.text();
+    }
+
+    private String get(String path) {
+        APIResponse response = request.get(TestConfig.API_PREFIX + path);
         return response.text();
     }
 

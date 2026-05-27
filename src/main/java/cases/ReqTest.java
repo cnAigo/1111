@@ -1,24 +1,22 @@
 package cases;
 
-import actions.ReqApiActions;
 import base.BaseTest;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.*;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
-import com.microsoft.playwright.APIResponse;
-import com.google.gson.JsonParser;
+import com.microsoft.playwright.options.WaitForSelectorState;
+import com.microsoft.playwright.options.LoadState;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
@@ -26,147 +24,64 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ReqTest extends BaseTest {
 
-    private RequirementPage reqPage;
-    private ReqApiActions api;
-    private static final Logger log = LoggerFactory.getLogger(ReqTest.class);
-
-    private static final String TEST_FILES_DIR = "src/main/resources/testfiles/";
-    private static final String PROJECT_ID = TestConstants.PROJECT_ID;
-    private static final String PARENT_FOLDER = TestConstants.PARENT_FOLDER;
-
-    @BeforeAll
-    public void initPage() {
-        reqPage = new RequirementPage(page);
-        api = new ReqApiActions(page.request());
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
-
-    // ========== 工具方法 ==========
-
-    private String resolveParentId() {
-        return api.findNodeIdByTitle(PROJECT_ID, PARENT_FOLDER);
-    }
-
-    /** 在测试父文件夹下创建临时文档，返回 [docId, docName, parentId] */
-    private String[] createTempDoc() {
-        String parentId = resolveParentId();
-        Assertions.assertNotNull(parentId, "未找到父文件夹节点");
-        String suffix = UUID.randomUUID().toString().substring(0, 6);
-        String docName = "Temp_Req_" + suffix;
-        String docId = api.createDocument(PROJECT_ID, parentId);
-        api.renameDocument(PROJECT_ID, docId, parentId, docName);
-        return new String[]{docId, docName, parentId};
-    }
-
-    private void cleanupDoc(String docId, String parentId) {
-        try {
-            api.deleteDocument(docId, parentId);
-            api.cleanDocument(docId, parentId);
-        } catch (Exception e) {
-            log.warn("清理文档 {} 失败: {}", docId, e.getMessage());
-        }
-    }
-
-    private void closeDialogs() {
-        try {
-            while (page != null &&
-                    page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible").count() > 0) {
-                page.keyboard().press("Escape");
-                page.waitForTimeout(300);
-            }
-        } catch (Exception e) {
-            log.warn("清理残留弹窗异常: {}", e.getMessage());
-        }
-    }
-
-    // ========== 测试用例 ==========
+    // ==================== Pure API tests ====================
 
     @Test
     @DisplayName("GNYL_072 [API] 新建需求规格")
     void test_GNYL072_newReq() {
-        String parentId = resolveParentId();
-        Assertions.assertNotNull(parentId, "未获取到父节点ID");
-
-        String suffix = UUID.randomUUID().toString().substring(0, 6);
-        String docName = "Temp_072_" + suffix;
-        String docId = api.createDocument(PROJECT_ID, parentId);
-        api.renameDocument(PROJECT_ID, docId, parentId, docName);
-
+        String[] doc = createTempDoc();
         try {
-            Assertions.assertFalse(docId.isEmpty(), "未能获取到新创建文档的 ID");
-            log.info("GNYL_072 新建需求规格成功, docId={}", docId);
+            Assertions.assertFalse(doc[0].isEmpty(), "未能获取到新创建文档的 ID");
+            log.info("GNYL_072 新建需求规格成功, docId={}", doc[0]);
         } finally {
-            cleanupDoc(docId, parentId);
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
     @DisplayName("GNYL_078 [API] 修改需求规格名称")
     void test_GNYL078_modifyReq() {
-        String parentId = resolveParentId();
-        Assertions.assertNotNull(parentId, "未获取到父节点ID");
-
-        String suffix = UUID.randomUUID().toString().substring(0, 6);
-        String docName = "Temp_078_" + suffix;
-        String docId = api.createDocument(PROJECT_ID, parentId);
-        api.renameDocument(PROJECT_ID, docId, parentId, docName);
-
+        String[] doc = createTempDoc();
         try {
-            String newName = "Renamed_078_" + suffix;
-            String resp = api.renameDocument(PROJECT_ID, docId, parentId, newName);
+            String newName = "Renamed_078_" + suffix();
+            String resp = api.renameDocument(PROJECT_ID, doc[0], doc[2], newName);
             Assertions.assertTrue(resp.contains("200"), "业务返回码不是200: " + resp);
             Assertions.assertTrue(resp.contains("修改成功"), "返回信息不匹配: " + resp);
             log.info("GNYL_078 需求规格名称修改成功");
         } finally {
-            cleanupDoc(docId, parentId);
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
-    @DisplayName("GNYL_084/086/088 [API] 删除 → 恢复 → 清除需求规格（完整生命周期）")
+    @DisplayName("GNYL_084/086/088 [API] 删除 → 恢复 → 清除需求规格")
     void test_GNYL084_086_088_deleteRecoverClean() {
-        String parentId = resolveParentId();
-        Assertions.assertNotNull(parentId, "未获取到父节点ID");
-
-        String suffix = UUID.randomUUID().toString().substring(0, 6);
-        String docId = api.createDocument(PROJECT_ID, parentId);
-        api.renameDocument(PROJECT_ID, docId, parentId, "生命周期测试_" + suffix);
-
+        String[] doc = createTempDoc();
         try {
-            // 1. 删除
-            String deleteResp = api.deleteDocument(docId, parentId);
+            String deleteResp = api.deleteDocument(doc[0], doc[2]);
             Assertions.assertTrue(deleteResp.contains("200"), "删除失败: " + deleteResp);
             log.info("GNYL_084 删除成功");
 
-            // 2. 恢复
-            String recoverResp = api.recoverDocument(docId, parentId);
+            String recoverResp = api.recoverDocument(doc[0], doc[2]);
             Assertions.assertTrue(recoverResp.contains("200"), "恢复失败: " + recoverResp);
             log.info("GNYL_086 恢复成功");
 
-            // 3. 再删除（恢复后要再删才能清除）
-            deleteResp = api.deleteDocument(docId, parentId);
+            deleteResp = api.deleteDocument(doc[0], doc[2]);
             Assertions.assertTrue(deleteResp.contains("200"), "二次删除失败: " + deleteResp);
             log.info("GNYL_087 二次删除成功");
 
-            // 4. 清除
-            String cleanResp = api.cleanDocument(docId, parentId);
+            String cleanResp = api.cleanDocument(doc[0], doc[2]);
             Assertions.assertTrue(cleanResp.contains("200"), "清除失败: " + cleanResp);
             log.info("GNYL_088 清除成功");
         } finally {
-            // 如果中途失败，确保清理
-            cleanupDoc(docId, parentId);
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
-    @DisplayName("GNYL_090 [API] 需求表视图切换（查询需求规格列表）")
+    @DisplayName("GNYL_090 [API] 需求表视图切换")
     void test_GNYL_090_DemandTable() {
         String resp = api.getReqSpeList(PROJECT_ID);
-
         Assertions.assertTrue(resp.contains("200"), "查询失败: " + resp);
         Assertions.assertTrue(resp.contains("操作成功"), "返回信息不匹配: " + resp);
 
@@ -177,17 +92,17 @@ public class ReqTest extends BaseTest {
         log.info("GNYL_090 需求表视图切换通过");
     }
 
+    // ==================== UI tests — doc-level ====================
+
     @Test
     @DisplayName("GNYL_091 [UI] 需求树视图切换")
     void test_GNYL_091_DemandTree() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
 
             Locator demandTreeBtn = page.locator("div")
-                    .filter(new Locator.FilterOptions().setHasText(Pattern.compile("^需求树$")))
-                    .nth(1);
+                    .filter(new Locator.FilterOptions().setHasText(Pattern.compile("^需求树$"))).nth(1);
             if (demandTreeBtn.isVisible()) {
                 demandTreeBtn.click();
                 page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("需求表")).click();
@@ -195,20 +110,14 @@ public class ReqTest extends BaseTest {
             }
 
             Locator demandTableBtn = page.locator("div")
-                    .filter(new Locator.FilterOptions().setHasText(Pattern.compile("^需求表$")))
-                    .nth(1);
+                    .filter(new Locator.FilterOptions().setHasText(Pattern.compile("^需求表$"))).nth(1);
             demandTableBtn.click();
             page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("需求树")).click();
 
             assertThat(page.getByText(TestConstants.ROOT_NODE).first()).isVisible();
             log.info("GNYL_091 需求树视图切换通过");
-
-            page.locator("#app").getByText("需求（根节点）").click(new Locator.ClickOptions()
-                    .setButton(MouseButton.RIGHT));
-            page.locator("span").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^刷新$"))).click();
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -216,14 +125,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_096: 查看属性")
     void test_GNYL_096_ViewProperties() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREE)
-                    .getByText(docName).first()
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-
+            rightClickTreeItem(doc[1]);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
@@ -239,8 +143,7 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(500);
             log.info("GNYL_096 属性查看通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -248,13 +151,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_097: 编辑属性")
     void test_GNYL_097_EditProperties() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREE)
-                    .getByText(docName).first()
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItem(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
@@ -266,7 +165,7 @@ public class ReqTest extends BaseTest {
             if (nameInput.isVisible()) {
                 nameInput.click();
                 nameInput.press("Control+a");
-                nameInput.fill(docName + "_edited");
+                nameInput.fill(doc[1] + "_edited");
                 page.waitForTimeout(300);
             }
 
@@ -287,8 +186,7 @@ public class ReqTest extends BaseTest {
             }
 
             Path filePath = Paths.get(TEST_FILES_DIR + "test_attachment.txt");
-            Locator uploadInput = page.locator(".el-upload input[type='file']");
-            uploadInput.setInputFiles(filePath);
+            page.locator(".el-upload input[type='file']").setInputFiles(filePath);
             page.waitForTimeout(2000);
 
             Locator remarkInput = page.getByPlaceholder("请输入备注");
@@ -300,11 +198,9 @@ public class ReqTest extends BaseTest {
 
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确 定")).click();
             page.waitForTimeout(1000);
-
             log.info("GNYL_097 编辑属性通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -312,15 +208,10 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_098: 规格名称必填测试")
     void test_GNYL_098_NameRequired() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItemExact(doc[1]);
             page.waitForTimeout(500);
-
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
@@ -339,22 +230,17 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("关闭此对话框")).click();
             log.info("GNYL_098 规格名称必填校验通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
-    @DisplayName("GNYL_100/101/102/103: 前缀校验（非字母开头 -> 非法字符 -> 超长 -> 合法）")
+    @DisplayName("GNYL_100/101/102/103: 前缀校验")
     void test_GNYL_100_101_102_103_PrefixValidation() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItemExact(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
@@ -397,31 +283,25 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(1000);
             log.info("GNYL_103 合法前缀保存通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
-    @DisplayName("GNYL_104/105: 描述校验（合法描述 -> 超长描述）")
+    @DisplayName("GNYL_104/105: 描述校验")
     void test_GNYL_104_105_DescriptionValidation() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItemExact(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
             Locator descArea = page.getByPlaceholder("可编辑描述");
-
-            String validDesc = "1.在合作区管理列表选择合作区，点击设置属性\n" +
-                    "2.勾选一个或多个属性复选框，点击列表上方删除按钮\n" +
-                    "3.在二次确认框，点击确定按钮";
+            String validDesc = "1.在合作区管理列表选择合作区，点击设置属性\n"
+                    + "2.勾选一个或多个属性复选框，点击列表上方删除按钮\n"
+                    + "3.在二次确认框，点击确定按钮";
             descArea.click();
             descArea.press("Control+a");
             descArea.fill(validDesc);
@@ -429,25 +309,19 @@ public class ReqTest extends BaseTest {
 
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确 定")).click();
             page.waitForTimeout(2000);
-
             log.info("GNYL_104 合法描述保存通过, 字数: {}", validDesc.length());
 
             closeDialogs();
             page.waitForTimeout(500);
 
-            // GNYL_105: 超长描述校验
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItemExact(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
             String longBlock = "这是一段用于测试超长描述的文本，验证系统对描述字段长度的限制是否生效。";
             StringBuilder sb = new StringBuilder();
-            while (sb.length() < 1200) {
-                sb.append(longBlock);
-            }
+            while (sb.length() < 1200) { sb.append(longBlock); }
             String tooLongDesc = sb.toString();
 
             descArea = page.getByPlaceholder("可编辑描述");
@@ -457,18 +331,13 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(500);
 
             String actualValue = descArea.inputValue();
-
-            if (actualValue.length() <= 1000) {
-                page.waitForTimeout(300);
-            } else {
+            if (actualValue.length() > 1000) {
                 page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确 定")).click();
                 page.waitForTimeout(500);
             }
-
             log.info("GNYL_105 超长描述校验通过 (期望: {} 字, 实际: {} 字)", tooLongDesc.length(), actualValue.length());
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -476,13 +345,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_106: 拖动符合格式的文件上传")
     void test_GNYL_106_DragUploadValid() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREE)
-                    .getByText(docName)
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItem(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
@@ -498,8 +363,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -507,13 +371,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_107: 拖动不符合格式的文件上传")
     void test_GNYL_107_DragUploadInvalid() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREE)
-                    .getByText(docName).first()
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItem(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
@@ -534,8 +394,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -543,13 +402,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_110: 填写不超过50字的备注")
     void test_GNYL_110_RemarkValid() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREE)
-                    .getByText(docName).first()
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItem(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
@@ -566,8 +421,7 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(1000);
             log.info("GNYL_110 不超过50字备注保存通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -575,13 +429,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_111: 填写超过50字的备注")
     void test_GNYL_111_RemarkTooLong() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREE)
-                    .getByText(docName).first()
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            rightClickTreeItem(doc[1]);
             page.waitForTimeout(500);
             page.getByText("属性", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
@@ -590,7 +440,6 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(300);
 
             Locator remarkInput = page.locator(".el-dialog:visible").locator("input, textarea").last();
-
             String longRemark = "这是一段超过五十字的备注测试内容用于验证系统对备注字段长度的限制是否能够正确地拦截超长输入确保用户无法输入过长的文本内容这是一段额外的文字用来凑够一百个字符的长度测试完毕";
             Assertions.assertTrue(longRemark.length() >= 100, "测试数据应达到100字");
             remarkInput.click();
@@ -612,8 +461,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -621,16 +469,11 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_112: 删除属性页文件")
     void test_GNYL_112_DeletePropertyFile() {
         String baseUrl = TestConfig.API_PREFIX;
-
         Path filePath = Paths.get(TEST_FILES_DIR + "test_attachment.txt");
         Assertions.assertTrue(Files.exists(filePath), "测试文件不存在: " + filePath);
 
         APIResponse uploadResp = page.request().post(baseUrl + "/erm/upload/reqDocUpload",
-                RequestOptions.create()
-                        .setMultipart(
-                                FormData.create().set("file", filePath)
-                        )
-        );
+                RequestOptions.create().setMultipart(FormData.create().set("file", filePath)));
         Assertions.assertEquals(200, uploadResp.status(), "上传接口调用失败");
 
         JsonObject uploadJson = JsonParser.parseString(uploadResp.text()).getAsJsonObject();
@@ -640,12 +483,10 @@ public class ReqTest extends BaseTest {
         try {
             JsonObject deleteBody = new JsonObject();
             deleteBody.addProperty("objectId", objectId);
-
             APIResponse deleteResp = page.request().post(baseUrl + "/erm/reqDocDelete",
                     RequestOptions.create()
                             .setHeader("Content-Type", "application/json")
-                            .setData(deleteBody.toString())
-            );
+                            .setData(deleteBody.toString()));
             Assertions.assertEquals(200, deleteResp.status(), "删除接口调用失败");
 
             JsonObject deleteJson = JsonParser.parseString(deleteResp.text()).getAsJsonObject();
@@ -660,27 +501,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_113: 添加权限人员")
     void test_GNYL_113_AddPermissionUser() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            Locator editIcon = page.locator("[class*='edit'], .el-icon-edit, [class*='permission']").first();
-            if (editIcon.isVisible()) {
-                editIcon.click();
-                page.waitForTimeout(1000);
-            } else {
-                page.getByRole(AriaRole.ROW,
-                                new Page.GetByRoleOptions().setName(docName))
-                        .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-                page.waitForTimeout(500);
-                page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-                page.waitForTimeout(1000);
-            }
+            openDocAndPermissionDialog(doc[1]);
 
             Locator dialog = page.locator(".el-dialog").first();
             assertThat(dialog).isVisible();
@@ -695,8 +518,7 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(500);
             log.info("GNYL_113 添加权限人员通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -704,21 +526,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_114: 组织部门选择验证")
     void test_GNYL_114_OrganizationSelection() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator orgSelect = page.locator("[class*='org'], [class*='department'], .el-tree").first();
             if (orgSelect.isVisible()) {
@@ -737,8 +547,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -746,21 +555,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_115: 勾选人员验证")
     void test_GNYL_115_UserSelectionValidation() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator firstCheckbox = page.locator(".el-checkbox, [type='checkbox']").first();
             if (firstCheckbox.isVisible()) {
@@ -779,8 +576,7 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(500);
             log.info("GNYL_115 勾选人员验证通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -788,21 +584,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_116: 删除选中人员")
     void test_GNYL_116_RemoveSelectedUser() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator firstCheckbox = page.locator(".el-checkbox, [type='checkbox']").first();
             if (firstCheckbox.isVisible()) {
@@ -819,8 +603,7 @@ public class ReqTest extends BaseTest {
             page.waitForTimeout(500);
             log.info("GNYL_116 删除选中人员通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -828,21 +611,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_117: 存在的用户名检索")
     void test_GNYL_117_SearchExistingUser() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
             if (searchInput.isVisible()) {
@@ -867,8 +638,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -876,21 +646,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_118: 用户名模糊查询")
     void test_GNYL_118_FuzzySearchUser() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
             if (searchInput.isVisible()) {
@@ -915,8 +673,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -924,21 +681,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_119: 不存在的用户名检索")
     void test_GNYL_119_SearchNonExistentUser() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
             if (searchInput.isVisible()) {
@@ -967,8 +712,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -976,21 +720,9 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_120: 清空用户名检索输入框")
     void test_GNYL_120_ClearUserSearchInput() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW,
-                            new Page.GetByRoleOptions().setName(docName))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+            openDocAndPermissionDialog(doc[1]);
 
             Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
             if (searchInput.isVisible()) {
@@ -1020,39 +752,36 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取消")).click();
             page.waitForTimeout(500);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
+
+    // ==================== UI tests — req-item level (API-based setup) ====================
 
     @Test
     @DisplayName("GNYL_121: 新建一级需求条目")
     void test_GNYL_121_CreateFirstLevelRequirementItem() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
             page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
+            Locator docNode = page.getByRole(AriaRole.TREEITEM,
+                    new Page.GetByRoleOptions().setName(doc[1]).setExact(true)).first();
+            docNode.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            docNode.dblclick();
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("新建子级")).click();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("刷新")).click();
-            page.waitForTimeout(2000);
+            page.waitForTimeout(1500);
 
             Locator newCell = page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first();
             newCell.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
 
             String firstItemText = newCell.innerText().trim();
             log.info("GNYL_121 新建一级条目成功: {}", firstItemText);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -1060,50 +789,48 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_122: 新建子需求条目")
     void test_GNYL_122_CreateSubRequirementItem() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
-            page.waitForTimeout(500);
+            // API: create parent req item (signature: 2 params only)
+            String parentItemId = api.addReqItem(PROJECT_ID, doc[0], doc[0]);
+            Assertions.assertNotNull(parentItemId, "API创建父级需求条目失败");
+            log.info("GNYL_122 API已创建父级条目: {}", parentItemId);
 
-            // 先创建一级条目作为父级
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
+            // 页面同步刷新
+            page.reload();
+            page.waitForLoadState(LoadState.NETWORKIDLE);
 
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("新建子级")).click();
-            page.waitForTimeout(1000);
+            // UI: open doc with smart wait
+            Locator docNode = page.getByRole(AriaRole.TREEITEM,
+                    new Page.GetByRoleOptions().setName(doc[1]).setExact(true)).first();
+            docNode.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            docNode.dblclick();
+            page.waitForTimeout(1500);
 
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("刷新")).click();
-            page.waitForTimeout(2000);
+            // UI: right-click parent row → 新建 → 子级对象
+            Locator parentCell = page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first();
+            parentCell.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            String parentText = parentCell.innerText().trim();
+            log.info("GNYL_122 定位到父级条目: {}", parentText);
 
-            Locator firstLevelCell = page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first();
-            firstLevelCell.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
-            String parentItemText = firstLevelCell.innerText().trim();
-            log.info("GNYL_122 已创建一级条目: {}", parentItemText);
-
-            // 在一级条目下创建子条目
-            page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName(parentItemText))
+            page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName(parentText))
                     .locator("div").first()
                     .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(1000);
 
             page.getByText("新建", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(500);
-
             page.locator("div").filter(new Locator.FilterOptions()
                     .setHasText(Pattern.compile("^子级对象$"))).click();
             page.waitForTimeout(2000);
 
             Locator subCell = page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first();
             subCell.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
-
-            String subItemText = subCell.innerText().trim();
-            log.info("GNYL_122 新建子条目成功: {}", subItemText);
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            log.info("GNYL_122 新建子条目成功: {}", subCell.innerText().trim());
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
@@ -1111,30 +838,31 @@ public class ReqTest extends BaseTest {
     @DisplayName("GNYL_123: 删除需求条目")
     void test_GNYL_123_DeleteRequirementItem() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
-            page.waitForTimeout(500);
+            // API: create the req item to be deleted (signature: 2 params only)
+            String reqItemId = api.addReqItem(PROJECT_ID, doc[0], doc[0]);
+            Assertions.assertNotNull(reqItemId, "API创建需求条目失败");
+            log.info("GNYL_123 API已创建待删除条目: {}", reqItemId);
 
-            // 先创建一级条目作为删除目标
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
-            page.waitForTimeout(1000);
+            // 页面同步刷新
+            page.reload();
+            page.waitForLoadState(LoadState.NETWORKIDLE);
 
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("新建子级")).click();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("刷新")).click();
-            page.waitForTimeout(2000);
+            // UI: open doc with smart wait, locate item, right-click → 删除
+            Locator docNode = page.getByRole(AriaRole.TREEITEM,
+                    new Page.GetByRoleOptions().setName(doc[1]).setExact(true)).first();
+            docNode.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            docNode.dblclick();
+            page.waitForTimeout(1500);
 
             Locator targetCell = page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first();
             targetCell.waitFor(new Locator.WaitForOptions()
-                    .setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
-            String targetItemText = targetCell.innerText().trim();
-            log.info("GNYL_123 已创建待删除条目: {}", targetItemText);
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            String targetText = targetCell.innerText().trim();
+            log.info("GNYL_123 定位到待删除条目: {}", targetText);
 
-            // 右键删除该条目
-            page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName(targetItemText))
+            page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName(targetText))
                     .locator("div").first()
                     .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             page.waitForTimeout(1000);
@@ -1142,25 +870,34 @@ public class ReqTest extends BaseTest {
             page.getByText("删除", new Page.GetByTextOptions().setExact(true)).click();
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("确定")).click();
             page.waitForTimeout(1000);
-
-            log.info("GNYL_123 删除条目 {} 成功", targetItemText);
+            log.info("GNYL_123 删除条目 {} 成功", targetText);
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
         }
     }
 
     @Test
-    @DisplayName("GNYL_128/129/130: 显示大纲 -> 结构定位 -> 隐藏大纲")
+    @DisplayName("GNYL_128/129/130: 显示大纲 → 结构定位 → 隐藏大纲")
     void test_GNYL_128_129_130_OutlineAndStructure() {
         String[] doc = createTempDoc();
-        String docId = doc[0], docName = doc[1], parentId = doc[2];
         try {
-            page.waitForTimeout(500);
+            // API: create a few req items for structure (signature: 2 params only)
+            for (int i = 1; i <= 3; i++) {
+                String itemId = api.addReqItem(PROJECT_ID, doc[0], doc[0]);
+                Assertions.assertNotNull(itemId, "API创建结构条目" + i + "失败");
+            }
+            log.info("GNYL_128 API已创建3条需求条目用于大纲测试");
 
-            page.getByRole(AriaRole.TREEITEM,
-                            new Page.GetByRoleOptions().setName(docName).setExact(true))
-                    .first().dblclick();
+            // 页面同步刷新
+            page.reload();
+            page.waitForLoadState(LoadState.NETWORKIDLE);
+
+            // UI: open doc with smart wait, test outline display/hide
+            Locator docNode = page.getByRole(AriaRole.TREEITEM,
+                    new Page.GetByRoleOptions().setName(doc[1]).setExact(true)).first();
+            docNode.waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+            docNode.dblclick();
             page.waitForTimeout(1000);
 
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("显示大纲")).click();
@@ -1169,7 +906,7 @@ public class ReqTest extends BaseTest {
             Locator outlineTab = page.getByRole(AriaRole.TAB, new Page.GetByRoleOptions().setName("结构"));
             assertThat(outlineTab).isVisible();
             page.waitForTimeout(500);
-            log.info("GNYL_128 显示大纲通过，条目可点击");
+            log.info("GNYL_128 显示大纲通过");
 
             outlineTab.click();
             page.waitForTimeout(500);
@@ -1188,8 +925,42 @@ public class ReqTest extends BaseTest {
             assertThat(showBtn).isVisible();
             log.info("GNYL_130 隐藏大纲通过");
         } finally {
-            cleanupDoc(docId, parentId);
-            closeDialogs();
+            cleanupDoc(doc[0], doc[2]);
+        }
+    }
+
+    // ==================== Private UI helpers ====================
+
+    private void rightClickTreeItem(String itemName) {
+        page.getByRole(AriaRole.TREE)
+                .getByText(itemName).first()
+                .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+    }
+
+    private void rightClickTreeItemExact(String itemName) {
+        page.getByRole(AriaRole.TREEITEM,
+                new Page.GetByRoleOptions().setName(itemName).setExact(true))
+                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+    }
+
+    private void openDocAndPermissionDialog(String docName) {
+        Locator docNode = page.getByRole(AriaRole.TREEITEM,
+                new Page.GetByRoleOptions().setName(docName).setExact(true)).first();
+        docNode.waitFor(new Locator.WaitForOptions()
+                .setState(WaitForSelectorState.VISIBLE).setTimeout(15000));
+        docNode.dblclick();
+        page.waitForTimeout(1000);
+
+        Locator editIcon = page.locator("[class*='edit'], .el-icon-edit, [class*='permission']").first();
+        if (editIcon.isVisible()) {
+            editIcon.click();
+            page.waitForTimeout(1000);
+        } else {
+            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(docName))
+                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            page.waitForTimeout(500);
+            page.getByText("权限设置", new Page.GetByTextOptions().setExact(true)).click();
+            page.waitForTimeout(1000);
         }
     }
 }

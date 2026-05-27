@@ -1,6 +1,5 @@
 package cases;
 
-import actions.ReqApiActions;
 import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -8,35 +7,17 @@ import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.MouseButton;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CollaborativeEditTest extends BaseTest {
 
-    private static final Logger log = LoggerFactory.getLogger(CollaborativeEditTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void init() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
-
     // ========== 需求规格协同编辑状态 ==========
     @Test
     @DisplayName("GNYL_186: 共享模式打开需求规格")
     public void test_GNYL_186() {
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(500);
         page.getByText("打开", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(300);
@@ -64,7 +45,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_188: 独占模式打开需求规格")
     public void test_GNYL_188() {
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME2);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME2);
         page.waitForTimeout(500);
         page.getByText("打开", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(300);
@@ -92,7 +73,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_190: 只读模式打开需求规格")
     public void test_GNYL_190() {
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(500);
         page.getByText("打开", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(300);
@@ -120,7 +101,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_192: 需求规格解锁")
     public void test_GNYL_192() {
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME2);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME2);
         page.waitForTimeout(500);
         page.getByText("解锁", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(500);
@@ -161,7 +142,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_195: 编辑不超过500字符的标题")
     public void test_GNYL_195() {
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-"))
@@ -187,7 +168,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_196: 编辑超过500字符的标题")
     public void test_GNYL_196() {
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-"))
@@ -252,7 +233,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_199: 需求加锁")
     public void test_GNYL_199() {
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         Locator firstItem = page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-")).first();
@@ -299,7 +280,7 @@ public class CollaborativeEditTest extends BaseTest {
     // ========== 协同编辑 - 工具栏 ==========
 
     private void openEditorAndClickContent() {
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("req-"))
@@ -844,7 +825,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_231: 新建视图")
     public void test_GNYL_231() {
-        rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
@@ -918,7 +899,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_235: 打开标准视图")
     public void test_GNYL_235() {
-        rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
@@ -943,7 +924,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_236: 打开新建的视图")
     public void test_GNYL_236() {
-        rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
@@ -968,7 +949,7 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_237: 删除视图")
     public void test_GNYL_237() {
-        rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("视图").setExact(true)).click();
@@ -993,14 +974,14 @@ public class CollaborativeEditTest extends BaseTest {
     @Test
     @DisplayName("GNYL_238: 分屏展示")
     public void test_GNYL_238() {
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(500);
         page.getByText("打开", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(300);
         page.getByText("共享模式", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(1000);
 
-        rPage.rightClickTreeNode(TestConstants.REQ_NAME2);
+        reqPage.rightClickTreeNode(TestConstants.REQ_NAME2);
         page.waitForTimeout(500);
         page.getByText("打开", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(300);

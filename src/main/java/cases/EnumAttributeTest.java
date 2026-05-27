@@ -4,34 +4,15 @@ import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
-import actions.ReqApiActions;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
 
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class EnumAttributeTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(EnumAttributeTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void initApi() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
 
     // ========== 工具方法 ==========
 
@@ -47,18 +28,6 @@ public class EnumAttributeTest extends BaseTest {
             }
         } catch (Exception e) {
             log.warn("清理属性 {} 失败: {}", nameEn, e.getMessage());
-        }
-    }
-
-    private void closeDialogs() {
-        try {
-            while (page != null &&
-                    page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible").count() > 0) {
-                page.keyboard().press("Escape");
-                page.waitForTimeout(300);
-            }
-        } catch (Exception e) {
-            log.warn("清理残留弹窗异常: {}", e.getMessage());
         }
     }
 
@@ -153,8 +122,8 @@ public class EnumAttributeTest extends BaseTest {
     void test_GNYL_183_UserTypeDialog() {
         String nameEn = randomEnName();
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             page.getByLabel("英文名").fill(nameEn);
             page.getByLabel("中文名").fill("用户属性弹窗测试");
@@ -179,8 +148,7 @@ public class EnumAttributeTest extends BaseTest {
                 log.info("GNYL_183 未找到用户选择控件");
             }
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 

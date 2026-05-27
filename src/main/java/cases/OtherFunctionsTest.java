@@ -1,6 +1,5 @@
 package cases;
 
-import actions.ReqApiActions;
 import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -8,23 +7,11 @@ import com.microsoft.playwright.options.AriaRole;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
+
 import java.nio.file.Paths;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class OtherFunctionsTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(OtherFunctionsTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void init() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
 
     @BeforeEach
     public void navigate() {

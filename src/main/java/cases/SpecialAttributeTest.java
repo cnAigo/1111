@@ -4,34 +4,15 @@ import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
-import actions.ReqApiActions;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
 
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class SpecialAttributeTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(SpecialAttributeTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void initApi() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
 
     // ========== 工具方法 ==========
 
@@ -50,26 +31,14 @@ public class SpecialAttributeTest extends BaseTest {
         }
     }
 
-    private void closeDialogs() {
-        try {
-            while (page != null &&
-                    page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible").count() > 0) {
-                page.keyboard().press("Escape");
-                page.waitForTimeout(300);
-            }
-        } catch (Exception e) {
-            log.warn("清理残留弹窗异常: {}", e.getMessage());
-        }
-    }
-
     // ========== 测试用例 ==========
 
     @Test
     @DisplayName("GNYL_174: 整数类属性非整数拦截")
     void test_GNYL_174_IntegerValidation() {
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             String nameEn = randomEnName();
             page.getByLabel("英文名").fill(nameEn);
@@ -97,8 +66,7 @@ public class SpecialAttributeTest extends BaseTest {
                 }
             }
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 
@@ -119,8 +87,8 @@ public class SpecialAttributeTest extends BaseTest {
     @DisplayName("GNYL_176: 浮点类属性非法字符拦截")
     void test_GNYL_176_FloatValidation() {
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             String nameEn = randomEnName();
             page.getByLabel("英文名").fill(nameEn);
@@ -145,8 +113,7 @@ public class SpecialAttributeTest extends BaseTest {
                 }
             }
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 
@@ -214,18 +181,16 @@ public class SpecialAttributeTest extends BaseTest {
             Assertions.assertTrue(resp.contains("200"), "创建日期属性失败: " + resp);
             log.info("GNYL_181 日期类属性选择与保存成功: {}", nameEn);
 
-            rPage.navigateToAttributeList();
+            reqPage.navigateToAttributeList();
             page.waitForTimeout(1000);
         } finally {
             cleanupAttr(nameEn);
-            closeDialogs();
         }
     }
 
     @Test
     @DisplayName("GNYL_182: 日期类属性删除")
     void test_GNYL_182_DateAttributeDelete() {
-        // 独立创建自己的日期属性来删除
         String nameEn = randomEnName();
         String payload = """
                 {

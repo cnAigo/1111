@@ -2,13 +2,9 @@ package cases;
 
 import base.BaseTest;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CommonSecurityTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(CommonSecurityTest.class);
 
     @Test
     @DisplayName("AQYL_001: 数据加密功能验证 - 待实现")

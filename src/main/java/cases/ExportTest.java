@@ -1,6 +1,5 @@
 package cases;
 
-import actions.ReqApiActions;
 import base.BaseTest;
 import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.Locator;
@@ -11,56 +10,13 @@ import com.microsoft.playwright.options.RequestOptions;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
-
-import java.util.UUID;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ExportTest extends BaseTest {
 
-    private static final Logger log = LoggerFactory.getLogger(ExportTest.class);
-    private RequirementPage reqPage;
-    private ReqApiActions api;
-
-    private static final String PROJECT_ID = TestConstants.PROJECT_ID;
-
-    @BeforeAll
-    public void initPage() {
-        reqPage = new RequirementPage(page);
-        api = new ReqApiActions(page.request());
-    }
-
     // ========== 工具方法 ==========
-
-    private String suffix() {
-        return UUID.randomUUID().toString().substring(0, 6);
-    }
-
-    private String[] createTempFolder() {
-        String name = "Exp_Folder_" + suffix();
-        String id = api.createFolder(PROJECT_ID, PROJECT_ID);
-        api.renameFolder(PROJECT_ID, id, PROJECT_ID, name);
-        return new String[]{id, name};
-    }
-
-    private String[] createTempDoc(String parentId) {
-        String name = "Exp_Doc_" + suffix();
-        String id = api.createDocument(PROJECT_ID, parentId);
-        api.renameDocument(PROJECT_ID, id, parentId, name);
-        return new String[]{id, name};
-    }
-
-    private void cleanupFolder(String folderName) {
-        try {
-            api.cleanFolderByName(PROJECT_ID, folderName);
-        } catch (Exception e) {
-            log.warn("清理 {} 失败: {}", folderName, e.getMessage());
-        }
-    }
 
     private void closeExportDialog() {
         try {
@@ -71,18 +27,6 @@ public class ExportTest extends BaseTest {
             }
         } catch (Exception e) {
             log.warn("关闭导出弹窗异常: {}", e.getMessage());
-        }
-    }
-
-    private void closeDialogs() {
-        try {
-            while (page != null &&
-                    page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible").count() > 0) {
-                page.keyboard().press("Escape");
-                page.waitForTimeout(300);
-            }
-        } catch (Exception e) {
-            log.warn("清理残留弹窗异常: {}", e.getMessage());
         }
     }
 
@@ -109,8 +53,7 @@ public class ExportTest extends BaseTest {
             log.info("GNYL_060 成功进入导出弹框");
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -143,8 +86,7 @@ public class ExportTest extends BaseTest {
             }
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -177,8 +119,7 @@ public class ExportTest extends BaseTest {
             }
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -211,8 +152,7 @@ public class ExportTest extends BaseTest {
             }
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -238,8 +178,7 @@ public class ExportTest extends BaseTest {
             }
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -280,8 +219,7 @@ public class ExportTest extends BaseTest {
             }
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -301,7 +239,6 @@ public class ExportTest extends BaseTest {
             page.getByText("导出", new Page.GetByTextOptions().setExact(true)).click();
             page.waitForTimeout(1000);
 
-            // 先执行一次导出操作以产生历史记录
             Locator excelOption = page.getByText("Excel", new Page.GetByTextOptions().setExact(true));
             if (excelOption.isVisible()) {
                 excelOption.click();
@@ -324,8 +261,7 @@ public class ExportTest extends BaseTest {
             }
         } finally {
             closeExportDialog();
-            cleanupFolder(folder[1]);
-            closeDialogs();
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -352,7 +288,7 @@ public class ExportTest extends BaseTest {
                 log.warn("GNYL_067 API导出Word返回状态码: {}", status);
             }
         } finally {
-            cleanupFolder(folder[1]);
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -379,7 +315,7 @@ public class ExportTest extends BaseTest {
                 log.warn("GNYL_068 API导出Excel返回状态码: {}", status);
             }
         } finally {
-            cleanupFolder(folder[1]);
+            cleanupFolderByName(folder[1]);
         }
     }
 
@@ -405,7 +341,7 @@ public class ExportTest extends BaseTest {
                 log.warn("GNYL_069 API导出ReqIF返回状态码: {}", status);
             }
         } finally {
-            cleanupFolder(folder[1]);
+            cleanupFolderByName(folder[1]);
         }
     }
 }

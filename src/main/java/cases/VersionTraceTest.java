@@ -1,6 +1,5 @@
 package cases;
 
-import actions.ReqApiActions;
 import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -8,33 +7,15 @@ import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.MouseButton;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import pages.RequirementPage;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class VersionTraceTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(VersionTraceTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void init() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
 
     // ========== 需求版本控制 ==========
     @Test
     @DisplayName("GNYL_267: 升版")
     public void test_GNYL_267() {
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         // 尝试悬浮"已发布"状态 → 升版
@@ -259,7 +240,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_275: 添加文件夹到收藏夹(根节点列表)")
     public void test_GNYL_275() {
-        rPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
+        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.TREEITEM,
@@ -280,7 +261,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_276: 添加文件夹到收藏夹(文件夹列表)")
     public void test_GNYL_276() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.TREEITEM,
@@ -301,7 +282,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_277: 添加需求规格到收藏夹")
     public void test_GNYL_277() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.ROW,
@@ -681,10 +662,10 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_330: 需求列表存在的需求检索")
     public void test_GNYL_330() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
-        rPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
+        reqPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
         page.waitForTimeout(500);
 
         Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
@@ -711,9 +692,9 @@ public class VersionTraceTest extends BaseTest {
     public void test_GNYL_331() {
         Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索']").first();
         if (!searchInput.isVisible()) {
-            rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
             page.waitForTimeout(1000);
-            rPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
+            reqPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
             page.waitForTimeout(500);
             searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
         }
@@ -741,9 +722,9 @@ public class VersionTraceTest extends BaseTest {
     public void test_GNYL_332() {
         Locator searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索']").first();
         if (!searchInput.isVisible()) {
-            rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+            reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
             page.waitForTimeout(1000);
-            rPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
+            reqPage.openFolderAndActivateEdit(TestConstants.PARENT_FOLDER, TestConstants.REQ_NAME1);
             page.waitForTimeout(500);
             searchInput = page.locator("input[placeholder*='搜索'], input[placeholder*='检索'], input[type='text']").first();
         }
@@ -779,7 +760,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_334: 复制需求为同级对象(右键)")
     public void test_GNYL_334() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         // 右键条目 → 复制
@@ -790,7 +771,7 @@ public class VersionTraceTest extends BaseTest {
         page.waitForTimeout(500);
 
         // 右键目标位置 → 粘贴为同级对象
-        rPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(500);
 
         Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
@@ -808,7 +789,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_335: 复制需求为子级对象(右键)")
     public void test_GNYL_335() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
@@ -817,7 +798,7 @@ public class VersionTraceTest extends BaseTest {
         page.getByText("复制", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(500);
 
-        rPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(500);
 
         Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
@@ -835,7 +816,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_338: 剪切需求为同级对象(右键)")
     public void test_GNYL_338() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
@@ -844,7 +825,7 @@ public class VersionTraceTest extends BaseTest {
         page.getByText("剪切", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(500);
 
-        rPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(500);
 
         Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
@@ -862,7 +843,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_339: 剪切需求为子级对象(右键)")
     public void test_GNYL_339() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
@@ -871,7 +852,7 @@ public class VersionTraceTest extends BaseTest {
         page.getByText("剪切", new Page.GetByTextOptions().setExact(true)).click();
         page.waitForTimeout(500);
 
-        rPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.rightClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(500);
 
         Locator pasteItem = page.getByText("粘贴", new Page.GetByTextOptions().setExact(true));
@@ -889,7 +870,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_342: 切换标题/正文")
     public void test_GNYL_342() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1))
@@ -909,7 +890,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_336: 复制为同级对象(拖动)")
     public void test_GNYL_336() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         // 拖动条目到目标文件夹
@@ -936,7 +917,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_337: 复制为子级对象(拖动)")
     public void test_GNYL_337() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
@@ -962,7 +943,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_340: 移动为同级对象")
     public void test_GNYL_340() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
@@ -988,7 +969,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_341: 移动为子级对象")
     public void test_GNYL_341() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         Locator source = page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(TestConstants.REQ_NAME1)).first();
@@ -1014,7 +995,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_343: 切换标题/正文(带图片表格提示)")
     public void test_GNYL_343() {
-        rPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
+        reqPage.doubleClickTreeNode(TestConstants.PARENT_FOLDER);
         page.waitForTimeout(1000);
 
         // 找一个可能包含图片或表格的条目
@@ -1042,7 +1023,7 @@ public class VersionTraceTest extends BaseTest {
     @DisplayName("GNYL_344: 更改单另存为草稿")
     public void test_GNYL_344() {
         // 打开需求规格 → 审签 → 另存为草稿
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         Locator statusTag = page.getByText("已发布").first();
@@ -1062,7 +1043,7 @@ public class VersionTraceTest extends BaseTest {
     @Test
     @DisplayName("GNYL_345: 更改审签发布")
     public void test_GNYL_345() {
-        rPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
+        reqPage.doubleClickTreeNode(TestConstants.REQ_NAME1);
         page.waitForTimeout(1000);
 
         Locator statusTag = page.getByText("已发布").first();

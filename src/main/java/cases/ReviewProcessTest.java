@@ -2,13 +2,9 @@ package cases;
 
 import base.BaseTest;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ReviewProcessTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(ReviewProcessTest.class);
 
     @Test @DisplayName("GNYL_239: 进入流程定义页面 - 待实现")
     public void test_GNYL_239() {}

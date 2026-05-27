@@ -2,13 +2,9 @@ package cases;
 
 import base.BaseTest;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CommonCompatibilityTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(CommonCompatibilityTest.class);
 
     @Test
     @DisplayName("JRXYL_001: Chrome浏览器兼容性测试 - 待实现")

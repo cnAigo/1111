@@ -4,12 +4,9 @@ import base.BaseTest;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
-import actions.ReqApiActions;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import pages.RequirementPage;
 
 import java.util.UUID;
@@ -19,21 +16,6 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class BasicAttributeTest extends BaseTest {
-
-    private static final Logger log = LoggerFactory.getLogger(BasicAttributeTest.class);
-    private ReqApiActions api;
-    private RequirementPage rPage;
-
-    @BeforeAll
-    public void initApi() {
-        api = new ReqApiActions(page.request());
-        rPage = new RequirementPage(page);
-    }
-
-    @BeforeEach
-    public void navigate() {
-        navigateToRequirementModule();
-    }
 
     // ========== 工具方法 ==========
 
@@ -49,18 +31,6 @@ public class BasicAttributeTest extends BaseTest {
             }
         } catch (Exception e) {
             log.warn("清理属性 {} 失败: {}", nameEn, e.getMessage());
-        }
-    }
-
-    private void closeDialogs() {
-        try {
-            while (page != null &&
-                    page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible").count() > 0) {
-                page.keyboard().press("Escape");
-                page.waitForTimeout(300);
-            }
-        } catch (Exception e) {
-            log.warn("清理残留弹窗异常: {}", e.getMessage());
         }
     }
 
@@ -150,12 +120,12 @@ public class BasicAttributeTest extends BaseTest {
     @DisplayName("GNYL_138/139/140: 必填项确认拦截")
     void test_GNYL_138_139_140_RequiredFieldConfirm() {
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             page.getByLabel("英文名").fill(randomEnName());
             page.getByLabel("中文名").fill("测试属性");
-            rPage.selectEnumType();
+            reqPage.selectEnumType();
 
             page.getByRole(AriaRole.BUTTON,
                     new Page.GetByRoleOptions().setName("确认")).click();
@@ -168,8 +138,7 @@ public class BasicAttributeTest extends BaseTest {
 
             log.info("GNYL_138/139/140 必填项拦截验证通过");
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 
@@ -177,8 +146,8 @@ public class BasicAttributeTest extends BaseTest {
     @DisplayName("GNYL_141/142: 英文名输入验证")
     void test_GNYL_141_142_EnglishNameValidation() {
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             page.getByLabel("英文名").fill("@#");
             page.getByLabel("描述").click();
@@ -192,8 +161,7 @@ public class BasicAttributeTest extends BaseTest {
             assertThat(page.getByText("请输入字母或数字")).isVisible();
             log.info("GNYL_142 英文名输入中文拦截通过");
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 
@@ -204,8 +172,8 @@ public class BasicAttributeTest extends BaseTest {
         String resp = api.addCustomAttribute(nameEn, "原始属性", "整型", TestConstants.PROJECT_ID);
         Assertions.assertTrue(resp.contains("200"), "创建属性失败: " + resp);
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             page.getByLabel("英文名").fill(nameEn);
             page.getByLabel("中文名").fill("新属性");
@@ -217,9 +185,8 @@ public class BasicAttributeTest extends BaseTest {
 
             log.info("GNYL_143/144 重复名称验证通过");
         } finally {
-            rPage.closeDialog();
+            reqPage.closeDialog();
             cleanupAttr(nameEn);
-            closeDialogs();
         }
     }
 
@@ -227,8 +194,8 @@ public class BasicAttributeTest extends BaseTest {
     @DisplayName("GNYL_145/146: 发布状态切换")
     void test_GNYL_145_146_TogglePublishStatus() {
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
 
             page.locator("label")
                     .filter(new Locator.FilterOptions()
@@ -244,8 +211,7 @@ public class BasicAttributeTest extends BaseTest {
             page.waitForTimeout(300);
             log.info("GNYL_146 切换未发布状态通过");
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 
@@ -253,9 +219,9 @@ public class BasicAttributeTest extends BaseTest {
     @DisplayName("GNYL_149/150/151/152: 标签与默认值操作")
     void test_GNYL_149_150_151_152_TagOperations() {
         try {
-            rPage.navigateToAttributeList();
-            rPage.openAddDialog();
-            rPage.selectEnumType();
+            reqPage.navigateToAttributeList();
+            reqPage.openAddDialog();
+            reqPage.selectEnumType();
 
             page.getByPlaceholder("请输入取值范围").fill("选项A");
             page.getByRole(AriaRole.BUTTON,
@@ -287,8 +253,7 @@ public class BasicAttributeTest extends BaseTest {
             page.waitForTimeout(300);
             log.info("GNYL_151/152 删除标签通过");
         } finally {
-            rPage.closeDialog();
-            closeDialogs();
+            reqPage.closeDialog();
         }
     }
 
@@ -306,7 +271,7 @@ public class BasicAttributeTest extends BaseTest {
             Assertions.assertTrue(publishResp.contains("200") || publishResp.contains("成功"),
                     "发布属性失败: " + publishResp);
 
-            rPage.navigateToAttributeList();
+            reqPage.navigateToAttributeList();
             page.waitForTimeout(1000);
 
             Locator row = page.locator(".el-table__row")
@@ -317,7 +282,6 @@ public class BasicAttributeTest extends BaseTest {
             log.info("GNYL_153 属性发布成功, id: {}", info[0]);
         } finally {
             cleanupAttr(nameEn);
-            closeDialogs();
         }
     }
 
@@ -355,7 +319,7 @@ public class BasicAttributeTest extends BaseTest {
     @DisplayName("GNYL_157: 属性列表展示")
     void test_GNYL_157_AttributeListDisplay() {
         try {
-            rPage.navigateToAttributeList();
+            reqPage.navigateToAttributeList();
             page.waitForTimeout(1000);
 
             Locator table = page.locator(".el-table").first();
@@ -379,7 +343,7 @@ public class BasicAttributeTest extends BaseTest {
             Assertions.assertTrue(api.isDataEmpty(resp),
                     "不存在的业务名称应返回空数据");
 
-            rPage.navigateToAttributeList();
+            reqPage.navigateToAttributeList();
             page.waitForTimeout(500);
 
             Locator bizInput = page.locator("input[placeholder*='业务'], input[placeholder*='名称']").first();
