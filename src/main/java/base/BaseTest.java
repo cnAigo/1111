@@ -140,6 +140,32 @@ public class BaseTest {
         }
     }
 
+    protected void hardCleanFolder(String folderId) {
+        try {
+            api.forceCleanFolder(folderId);
+        } catch (Exception e) {
+            log.warn("硬清理文件夹 {} 失败: {}", folderId, e.getMessage());
+        }
+    }
+
+    protected void cleanupCustomAttr(String nameEn) {
+        try {
+            String[] info = api.findCustomAttribute(nameEn, PROJECT_ID);
+            if (info != null) {
+                api.deleteCustomAttribute(info[0]);
+            }
+        } catch (Exception e) {
+            log.warn("清理自定义属性 {} 失败: {}", nameEn, e.getMessage());
+        }
+    }
+
+    protected String[] createTempDocFull(String parentId) {
+        String docId = api.createDocument(PROJECT_ID, parentId);
+        String docName = "AT_Doc_" + suffix();
+        api.renameDocument(PROJECT_ID, docId, parentId, docName);
+        return new String[]{docId, docName, parentId};
+    }
+
     protected void ensureLoggedIn() {
         try {
             String currentUrl = page.url();

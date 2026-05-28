@@ -67,6 +67,11 @@ public class ReqApiActions {
     private static final String ERM_SEARCH_FOLDER_CHILDREN = "/erm/search/searchReqFolderChildrenList";
     private static final String ERM_GET_VERSION_LIST = "/erm/search/getReqSpeVersionList";
     private static final String ERM_GET_TEMPLATE_NAMES = "/erm/attr/get/getTemplateNames";
+    private static final String ERM_CHECK_OPEN_MODE = "/erm/get/checkOpenMode";
+    private static final String ERM_SEARCH_ATTRS = "/erm/customAttribute/searchAttributes";
+    private static final String ERM_SEARCH_TRACE = "/erm/search/searchReqSpecificationTrace";
+    private static final String ERM_CHANGE_ANALYSIS = "/erm/aiAnalysis/search/searchChangeAnalysisResultList";
+    private static final String ERM_INSERT_TEMPLATE = "/erm/attr/post/insertTemplate";
 
     private static final String PARENT_TYPE_FOLDER = "reqSpeFolder";
     private static final String PARENT_TYPE_PROJECT = "project";
@@ -691,6 +696,51 @@ public class ReqApiActions {
                         .setData(payload)
         );
         return response.text();
+    }
+
+    // ========== New HAR-discovered endpoints ==========
+
+    public String checkOpenMode(String masterId, String operateType, String openPerson) {
+        return get(ERM_CHECK_OPEN_MODE + "?masterId=" + masterId
+                + "&operateType=" + operateType + "&openPerson=" + openPerson);
+    }
+
+    public String searchAttributes(String projectId, String businessDomain, String objectType) {
+        APIResponse response = request.get(
+                TestConfig.API_PREFIX + ERM_SEARCH_ATTRS,
+                RequestOptions.create()
+                        .setQueryParam("projectId", projectId)
+                        .setQueryParam("businessDomain", businessDomain)
+                        .setQueryParam("objectType", objectType)
+        );
+        return response.text();
+    }
+
+    public String searchReqSpecTrace(String objectId, String type) {
+        return get(ERM_SEARCH_TRACE + "?objectId=" + objectId + "&type=" + type);
+    }
+
+    public String searchChangeAnalysis(String masterId, String version) {
+        return get(ERM_CHANGE_ANALYSIS + "?masterId=" + masterId + "&version=" + version);
+    }
+
+    public String insertTemplate(String templateName, String projectId,
+                                 String templateDescribe, String attrListJson) {
+        String payload = """
+                {
+                    "templateName": "%s",
+                    "projectId": "%s",
+                    "templateDescribe": "%s",
+                    "attrTemplateInfoRspVoList": %s
+                }
+                """.formatted(templateName, projectId, templateDescribe, attrListJson);
+        return post(ERM_INSERT_TEMPLATE, payload);
+    }
+
+    // ========== Generic search helpers ==========
+
+    public String searchProjectByUser() {
+        return get(ERM_SEARCH_PROJECT);
     }
 
     private String get(String path) {
