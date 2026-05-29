@@ -1,12 +1,12 @@
-package cases;
+package cases.api;
 
-import base.BaseTest;
+import base.ApiTestHelper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class UnlockApiTest extends BaseTest {
+public class UnlockApiTest extends ApiTestHelper {
 
     @Test
     @DisplayName("检查打开模式(正向)")

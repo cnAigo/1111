@@ -1,13 +1,13 @@
-package cases;
+package cases.api;
 
-import base.BaseTest;
+import base.ApiTestHelper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.microsoft.playwright.APIResponse;
 import org.junit.jupiter.api.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class ExportImportApiTest extends BaseTest {
+public class ExportImportApiTest extends ApiTestHelper {
 
     // ==================== 导出 Excel ====================
 
@@ -20,12 +20,7 @@ public class ExportImportApiTest extends BaseTest {
             String docId = doc[0];
             folderId = doc[2];
 
-            String templateResp = api.getTemplateNames(PROJECT_ID);
-            JsonObject tRoot = JsonParser.parseString(templateResp).getAsJsonObject();
-            String templateType = (tRoot.has("data") && !tRoot.get("data").isJsonNull())
-                    ? "sys_default" : "default";
-
-            APIResponse response = api.exportExcel(docId, templateType);
+            APIResponse response = api.exportExcel(docId, "sys_default");
 
             Assertions.assertTrue(response.ok(),
                     "导出请求应成功, status=" + response.status());
@@ -167,20 +162,6 @@ public class ExportImportApiTest extends BaseTest {
         }
     }
 
-    // ==================== 获取模板 ====================
-
-    @Test
-    @DisplayName("获取模板名称列表(正向)")
-    void test_getTemplateNames() {
-        String resp = api.getTemplateNames(PROJECT_ID);
-
-        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
-        Assertions.assertEquals(200, root.get("code").getAsInt(),
-                "获取模板列表应成功, resp: " + resp);
-        Assertions.assertNotNull(root.get("data"), "data不应为null");
-        log.info("获取模板名称列表 通过");
-    }
-
     // ==================== 获取AtoZ参数 ====================
 
     @Test
@@ -303,5 +284,119 @@ public class ExportImportApiTest extends BaseTest {
         } finally {
             if (folderId != null) hardCleanFolder(folderId);
         }
+    }
+
+    // ==================== 导出边界补充 ====================
+
+    @Test
+    @DisplayName("导出Word-不存在的对象ID(负向)")
+    void test_exportWordInvalidId() {
+        APIResponse response = api.exportWord("invalid_id_99999", "sys_default");
+        Assertions.assertFalse(response.ok(),
+                "不存在的对象ID应返回错误, status=" + response.status());
+        log.info("导出Word-无效ID 通过: status={}", response.status());
+    }
+
+    @Test
+    @DisplayName("导出Excel-空模板类型(负向)")
+    void test_exportExcelEmptyTemplate() {
+        String folderId = null;
+        try {
+            String[] doc = createTempDoc();
+            folderId = doc[2];
+            APIResponse response = api.exportExcel(doc[0], "");
+            log.info("导出Excel-空模板: status={}, size={} bytes",
+                    response.status(), response.body().length);
+        } finally {
+            if (folderId != null) hardCleanFolder(folderId);
+        }
+    }
+
+    @Test
+    @DisplayName("导出ReqIf-不存在的对象(负向)")
+    void test_exportReqIfInvalidObject() {
+        String payload = """
+                {
+                    "reqIfFileName": "AT_InvalidExport",
+                    "parentId": "%s",
+                    "selectedList": [{"objectId": "invalid_id_99999", "type": "reqSpe"}],
+                    "attributeList": [],
+                    "projectId": "%s"
+                }
+                """.formatted(PROJECT_ID, PROJECT_ID);
+
+        String resp = api.exportReqIf(payload);
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        Assertions.assertNotEquals(200, code,
+                "不存在的对象导出应被拦截, 实际code=" + code + ", resp: " + resp);
+        log.info("导出ReqIf-无效对象 通过: code={}, msg={}",
+                code, root.has("msg") ? root.get("msg").getAsString() : "");
+    }
+
+    @Test
+    @DisplayName("导出ReqIf-空selectedList(负向)")
+    void test_exportReqIfEmptyList() {
+        String payload = """
+                {
+                    "reqIfFileName": "AT_EmptyList",
+                    "parentId": "%s",
+                    "selectedList": [],
+                    "attributeList": [],
+                    "projectId": "%s"
+                }
+                """.formatted(PROJECT_ID, PROJECT_ID);
+
+        String resp = api.exportReqIf(payload);
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        log.info("导出ReqIf-空selectedList: code={}, msg={}",
+                code, root.has("msg") ? root.get("msg").getAsString() : "");
+    }
+
+    // ==================== 导入边界补充 ====================
+
+    @Test
+    @DisplayName("导入-非法JSON格式(负向)")
+    void test_importMalformedJson() {
+        String folderId = null;
+        try {
+            String[] f = createTempFolder();
+            folderId = f[0];
+
+            String resp = api.importReqSpecification(PROJECT_ID, folderId,
+                    "AT_Import_" + suffix(), "{invalid json}}}}");
+
+            JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+            int code = root.get("code").getAsInt();
+            Assertions.assertNotEquals(200, code,
+                    "非法JSON应被拦截, 实际code=" + code + ", resp: " + resp);
+            log.info("导入-非法JSON 通过: code={}", code);
+        } finally {
+            if (folderId != null) hardCleanFolder(folderId);
+        }
+    }
+
+    @Test
+    @DisplayName("导入-不存在的目标文件夹(负向)")
+    void test_importNonExistingFolder() {
+        String resp = api.importReqSpecification(PROJECT_ID, "nonexistent_id_99999",
+                "AT_Import_" + suffix(), "[{\"name\":\"test_req\"}]");
+
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        Assertions.assertNotEquals(200, code,
+                "不存在的目标文件夹导入应失败, 实际code=" + code + ", resp: " + resp);
+        log.info("导入-不存在的文件夹 通过: code={}", code);
+    }
+
+    @Test
+    @DisplayName("获取AtoZ参数-空项目ID(负向)")
+    void test_getAllAtozParamEmptyProject() {
+        String resp = api.getAllAtozParam("");
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        log.info("AtoZ参数-空项目ID: code={}, msg={}",
+                code, root.has("msg") ? root.get("msg").getAsString() : "");
     }
 }

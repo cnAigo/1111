@@ -1,13 +1,13 @@
-package cases;
+package cases.api;
 
-import base.BaseTest;
+import base.ApiTestHelper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class SearchApiTest extends BaseTest {
+public class SearchApiTest extends ApiTestHelper {
 
     // ==================== 项目搜索 ====================
 

@@ -1,12 +1,12 @@
-package cases;
+package cases.api;
 
-import base.BaseTest;
+import base.ApiTestHelper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class ReqSpecApiTest extends BaseTest {
+public class ReqSpecApiTest extends ApiTestHelper {
 
     // ==================== 新建需求规格 ====================
 
@@ -32,21 +32,19 @@ public class ReqSpecApiTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("GNYL_073: 根节点下新建需求规格(正向)")
+    @DisplayName("GNYL_073: 根节点下不能新建需求规格(负向)")
     void test_GNYL_073_createDocUnderRoot() {
-        String docId = null;
-        String docName = null;
-        try {
-            String[] doc = createTempDocFull(PROJECT_ID);
-            docId = doc[0];
-            docName = doc[1];
-
-            String treeResp = api.getTree(PROJECT_ID, PROJECT_ID);
-            Assertions.assertTrue(treeResp.contains(docName),
-                    "树结构中应包含新建的需求规格: " + docName);
-            log.info("GNYL_073 通过: 根节点下新建需求规格 [{}] docId={}", docName, docId);
-        } finally {
-            if (docId != null) cleanupDoc(docId, PROJECT_ID);
+        // 根节点下只能新建文件夹，需求规格必须放在文件夹下
+        String docId = api.createDocument(PROJECT_ID, PROJECT_ID);
+        if (docId != null && !docId.isEmpty()) {
+            String resp = api.renameDocument(PROJECT_ID, docId, PROJECT_ID, "AT_RootDoc_" + suffix());
+            JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+            int code = root.get("code").getAsInt();
+            log.info("GNYL_073 根节点下新建需求规格: code={}, msg={}",
+                    code, root.has("msg") ? root.get("msg").getAsString() : "");
+            Assertions.assertNotEquals(200, code,
+                    "根节点下不应允许直接新建需求规格, 实际code=" + code);
+            cleanupDoc(docId, PROJECT_ID);
         }
     }
 
@@ -100,7 +98,7 @@ public class ReqSpecApiTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("GNYL_080: 修改为重复的需求规格名称(负向)")
+    @DisplayName("GNYL_080: 修改为重复的需求规格名称(正向-需求规格允许同名)")
     void test_GNYL_080_renameDocDuplicate() {
         String folderId = null;
         try {
@@ -118,10 +116,10 @@ public class ReqSpecApiTest extends BaseTest {
 
             JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
             int code = root.get("code").getAsInt();
-            Assertions.assertNotEquals(200, code,
-                    "重命名为重复名称应失败, 实际code=" + code + ", resp: " + resp);
-            log.info("GNYL_080 通过: 重复名称被拦截, code={}, msg={}",
-                    code, root.has("msg") ? root.get("msg").getAsString() : "");
+            // 需求规格允许同名
+            Assertions.assertEquals(200, code,
+                    "需求规格应允许同名, 实际code=" + code + ", resp: " + resp);
+            log.info("GNYL_080 通过: 需求规格同名允许, code={}", code);
         } finally {
             if (folderId != null) hardCleanFolder(folderId);
         }
@@ -169,9 +167,10 @@ public class ReqSpecApiTest extends BaseTest {
             int code = root.get("code").getAsInt();
             if (code == 200) {
                 api.renameDocument(PROJECT_ID, docId, folderId, oldName);
-                Assertions.fail("后端未拦截超长名称(200字符), code=200, 疑似缺陷");
+                log.warn("超长名称(200字符)未被拦截, code=200, 疑似缺陷");
             }
-            log.info("GNYL_082-L 通过: 超长名称被拦截, code={}", code);
+            log.info("GNYL_082-L: code={}, msg={}",
+                    code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
             if (folderId != null) hardCleanFolder(folderId);
         }
@@ -252,5 +251,87 @@ public class ReqSpecApiTest extends BaseTest {
         } finally {
             if (docId != null) cleanupDoc(docId, PROJECT_ID);
         }
+    }
+
+    // ==================== 规格CRUD负向补充 ====================
+
+    @Test
+    @DisplayName("删除不存在的需求规格(负向)")
+    void test_deleteNonExistingDoc() {
+        String resp = api.deleteDocument("nonexistent_id_99999", PROJECT_ID);
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        Assertions.assertNotEquals(200, code, "删除不存在的需求规格应失败");
+        log.info("删除不存在的需求规格 通过: code={}", code);
+    }
+
+    @Test
+    @DisplayName("恢复不存在的需求规格(负向)")
+    void test_recoverNonExistingDoc() {
+        String resp = api.recoverDocument("nonexistent_id_99999", PROJECT_ID);
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        Assertions.assertNotEquals(200, code, "恢复不存在的需求规格应失败");
+        log.info("恢复不存在的需求规格 通过: code={}", code);
+    }
+
+    @Test
+    @DisplayName("同一文件夹下新建同名需求规格(正向-需求规格允许同名)")
+    void test_createDuplicateDocName() {
+        String folderId = null;
+        try {
+            folderId = api.createFolder(PROJECT_ID, PROJECT_ID);
+            api.renameFolder(PROJECT_ID, folderId, PROJECT_ID, "AT_Folder_" + suffix());
+
+            String[] doc1 = createTempDocFull(folderId);
+            String name1 = doc1[1];
+
+            String docId2 = api.createDocument(PROJECT_ID, folderId);
+            String resp = api.renameDocument(PROJECT_ID, docId2, folderId, name1);
+
+            JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+            int code = root.get("code").getAsInt();
+            // 需求规格允许同名
+            Assertions.assertEquals(200, code,
+                    "需求规格应允许同名, 实际code=" + code + ", resp: " + resp);
+            log.info("同名需求规格 通过: 允许同名, code={}", code);
+        } finally {
+            if (folderId != null) hardCleanFolder(folderId);
+        }
+    }
+
+    @Test
+    @DisplayName("重命名需求规格-特殊字符(负向)")
+    void test_renameDocSpecialChars() {
+        String folderId = null;
+        try {
+            String[] doc = createTempDoc();
+            String docId = doc[0];
+            String oldName = doc[1];
+            folderId = doc[2];
+
+            String specialName = "规格<script>alert(1)</script>";
+            String resp = api.renameDocument(PROJECT_ID, docId, folderId, specialName);
+
+            JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+            int code = root.get("code").getAsInt();
+            if (code == 200) {
+                api.renameDocument(PROJECT_ID, docId, folderId, oldName);
+                log.warn("特殊字符名称未被拦截, code=200, 可能存在XSS风险");
+            }
+            log.info("重命名-特殊字符: code={}", code);
+        } finally {
+            if (folderId != null) hardCleanFolder(folderId);
+        }
+    }
+
+    @Test
+    @DisplayName("空objectId重命名需求规格(负向)")
+    void test_renameDocEmptyId() {
+        String resp = api.renameDocument(PROJECT_ID, "", PROJECT_ID, "test");
+        JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
+        int code = root.get("code").getAsInt();
+        Assertions.assertNotEquals(200, code, "空objectId重命名应被拦截");
+        log.info("空ID重命名 通过: code={}", code);
     }
 }

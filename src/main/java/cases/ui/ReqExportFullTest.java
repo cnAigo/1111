@@ -1,4 +1,4 @@
-package cases;
+package cases.ui;
 
 import base.BaseTest;
 import com.microsoft.playwright.Download;

@@ -1,12 +1,12 @@
-package cases;
+package cases.api;
 
-import base.BaseTest;
+import base.ApiTestHelper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.*;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class CustomAttributeApiTest extends BaseTest {
+public class CustomAttributeApiTest extends ApiTestHelper {
 
     // ==================== 新建自定义属性 ====================
 

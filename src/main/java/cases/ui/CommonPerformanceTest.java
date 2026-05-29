@@ -1,4 +1,4 @@
-package cases;
+package cases.ui;
 
 import base.BaseTest;
 import org.junit.jupiter.api.*;
