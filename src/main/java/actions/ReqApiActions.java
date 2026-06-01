@@ -7,7 +7,9 @@ import com.google.gson.JsonParser;
 import com.microsoft.playwright.APIRequestContext;
 import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.options.RequestOptions;
+import com.microsoft.playwright.options.FormData;
 import config.TestConfig;
+import java.nio.file.Paths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1133,7 +1135,7 @@ public class ReqApiActions {
                     "status": "%s",
                     "remark": "%s",
                     "expirationTime": "",
-                    "isTemp": "0",
+                    "isTemp": 0,
                     "secretLevel": "%s",
                     "admin": false,
                     "delFlag": "0",
@@ -1164,6 +1166,35 @@ public class ReqApiActions {
     public APIResponse sysUserExport() {
         return request.post(TestConfig.API_PREFIX + SYS_USER_CRUD + "/export",
                 RequestOptions.create().setHeader("Content-Type", "application/json"));
+    }
+
+    public String sysUserResetPwd(String userId, String password) {
+        String payload = """
+                {
+                    "userId": "%s",
+                    "password": "%s"
+                }
+                """.formatted(userId, password);
+        return put(SYS_USER_CRUD + "/resetPwd", payload);
+    }
+
+    public APIResponse sysUserImportTemplate() {
+        return request.post(TestConfig.API_PREFIX + SYS_USER_CRUD + "/importTemplate",
+                RequestOptions.create().setHeader("Content-Type", "application/json"));
+    }
+
+    public String sysUserImportData(String filePath, boolean updateSupport) {
+        APIResponse response = request.post(
+                TestConfig.API_PREFIX + SYS_USER_CRUD + "/importData?updateSupport=" + updateSupport,
+                RequestOptions.create()
+                        .setMultipart(FormData.create()
+                                .set("file", Paths.get(filePath)))
+        );
+        return response.text();
+    }
+
+    public String sysUserDeptTree() {
+        return get(SYS_USER_CRUD + "/deptTree");
     }
 
     // ========== System Post Management (岗位管理 /system/post/) ==========

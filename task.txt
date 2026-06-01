@@ -1,0 +1,22 @@
+【架构师指令：构建精准测试服务化平台 (TaaS Console) MVP版】
+
+当前项目是一个 Spring Boot 工程，请开启完全自治模式，阅读当前项目的代码，并完成以下三个模块的开发：
+
+任务 1：编写后端执行控制器 (TestRunnerController.java)
+- 在 src/main/java/org/example/testvue/controller/ 下新建 TestRunnerController。
+- 提供一个 POST 接口 /api/test/run，接收参数 module（如：文件夹、用户、全部）。
+- 逻辑：根据传入的 module 动态拼接 Maven 测试命令。
+- 使用 Java 的 ProcessBuilder 在后台异步执行两条命令：先执行 mvn test，测试完成后，执行 mvn allure:report 生成静态报告。
+- 注意：请使用 @Async 异步执行，并立刻给前端返回 "测试已启动" 的 JSON 响应。
+
+任务 2：配置静态资源映射 (WebConfig.java)
+- 在 config 目录下新建 WebConfig.java 实现 WebMvcConfigurer。
+- 覆盖 addResourceHandlers 方法，将 /allure-report/** 映射到本地的 file:target/site/allure-maven-plugin/ 目录。
+
+任务 3：编写极简前端发射台 (index.html)
+- 在 src/main/resources/static/ 目录下新建 index.html。
+- 页面使用原生的 HTML+CSS+JS。
+- UI 包含：顶部是模块选择按钮和“开始测试”按钮；中间是状态提示区；底部是一个 iframe 标签，src 指向 /allure-report/index.html。
+- 交互逻辑：点击按钮后请求 /api/test/run 接口，倒计时结束后将底部的 iframe 显示出来展示 Allure 报告。
+
+请自行创建代码，完成后启动 Spring Boot 服务并告诉我访问地址。
