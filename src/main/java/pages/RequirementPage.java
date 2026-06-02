@@ -118,22 +118,19 @@ public class RequirementPage {
             page.getByRole(AriaRole.TREEITEM,
                             new Page.GetByRoleOptions().setName(TestConstants.ROOT_NODE))
                     .locator("div").first().click();
-            page.waitForTimeout(500);
+            page.waitForFunction("() => document.activeElement === document.body || document.activeElement === null");
         } else {
-            node.locator(".el-tree-node__label, .custom-tree-node").first().click();
-            page.waitForTimeout(300);
-            node.locator(".el-tree-node__label, .custom-tree-node").first().click();
-            page.waitForTimeout(300);
+            node.locator(".el-tree-node__label, .custom-tree-node").first().dblclick();
 
             Locator editInput = page.locator("input:focus");
-            editInput.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+            editInput.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE).setTimeout(5000));
             editInput.press("Control+a");
             editInput.fill(newName);
 
             page.getByRole(AriaRole.TREEITEM,
                             new Page.GetByRoleOptions().setName(TestConstants.ROOT_NODE))
                     .locator("div").first().click();
-            page.waitForTimeout(500);
+            page.waitForFunction("() => document.activeElement === document.body || document.activeElement === null");
         }
 
         Locator renamed = page.locator(".el-tree-node")
@@ -156,7 +153,8 @@ public class RequirementPage {
                 .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
         page.getByText("删除", new Page.GetByTextOptions().setExact(true)).last().click();
         page.mouse().click(0, 0);
-        page.waitForTimeout(500);
+        // Wait for context menu to close
+        page.locator(".el-dropdown-menu, .el-popper").first().waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.HIDDEN).setTimeout(3000));
 
         target.locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
         page.getByText("清除", new Page.GetByTextOptions().setExact(true)).last()
@@ -211,7 +209,11 @@ public class RequirementPage {
         page.getByRole(AriaRole.TREEITEM,
                         new Page.GetByRoleOptions().setName("需求（根节点）"))
                 .locator("div").first().click();
-        page.waitForTimeout(1000);
+        // Wait for save to complete — toast or error message appears
+        try {
+            page.waitForSelector(".el-message--error, .el-message--success, .el-message__content",
+                    new Page.WaitForSelectorOptions().setTimeout(3000));
+        } catch (TimeoutError ignored) {}
 
         try {
             Locator toast = page.locator(".el-message--error, .el-message__content")
@@ -226,20 +228,20 @@ public class RequirementPage {
 
     public void navigateToAttributeList() {
         page.navigate(TestConfig.BASE_URL + "/#/SystemManagement");
-        page.waitForTimeout(2000);
+        page.waitForLoadState(LoadState.NETWORKIDLE);
         page.getByRole(AriaRole.MENUITEM,
                 new Page.GetByRoleOptions().setName("合作区管理")).click();
-        page.waitForTimeout(1000);
+        page.waitForSelector(".el-table__body tr", new Page.WaitForSelectorOptions().setTimeout(3000));
         page.getByRole(AriaRole.ROW,
                         new Page.GetByRoleOptions().setName("test1"))
                 .getByRole(AriaRole.BUTTON).nth(3).click();
-        page.waitForTimeout(1000);
+        page.waitForLoadState(LoadState.NETWORKIDLE);
     }
 
     public void openAddDialog() {
         page.getByRole(AriaRole.BUTTON,
                 new Page.GetByRoleOptions().setName("新增")).click();
-        page.waitForTimeout(500);
+        page.waitForSelector(".el-dialog:visible, .el-drawer:visible", new Page.WaitForSelectorOptions().setTimeout(3000));
     }
 
     public void selectEnumType() {
@@ -247,16 +249,16 @@ public class RequirementPage {
                 .filter(new Locator.FilterOptions()
                         .setHasText(Pattern.compile("^请选择$")))
                 .nth(3).click();
-        page.waitForTimeout(300);
+        page.waitForSelector("[role=option]", new Page.WaitForSelectorOptions().setTimeout(3000));
         page.getByRole(AriaRole.OPTION,
                 new Page.GetByRoleOptions().setName("枚举")).click();
-        page.waitForTimeout(500);
+        page.waitForFunction("() => !document.querySelector('[role=option]')");
     }
 
     public void closeDialog() {
         page.getByRole(AriaRole.BUTTON,
                 new Page.GetByRoleOptions().setName("取消")).click();
-        page.waitForTimeout(300);
+        page.waitForSelector(".el-dialog:visible, .el-drawer:visible", new Page.WaitForSelectorOptions().setState(WaitForSelectorState.HIDDEN).setTimeout(3000));
     }
 
     private String extractJsonValue(String json, String fieldName) {

@@ -30,7 +30,7 @@ public class BaseTest {
     protected static final Logger log = LoggerFactory.getLogger(BaseTest.class);
     private static final String AUTH_STATE_PATH = "auth.json";
 
-    protected static final String PROJECT_ID = TestConstants.PROJECT_ID;
+    protected static String PROJECT_ID;
     protected static final String TEST_FILES_DIR = "src/main/resources/testfiles/";
 
     @BeforeAll
@@ -55,6 +55,17 @@ public class BaseTest {
         page.setDefaultNavigationTimeout(30000);
         reqPage = new RequirementPage(page);
         api = new ReqApiActions(page.request());
+
+        // Dynamic project ID lookup
+        try {
+            PROJECT_ID = api.getProjectIdByName(TestConstants.PROJECT_NAME);
+            TestConstants.PROJECT_ID = PROJECT_ID;
+            log.info("Resolved PROJECT_ID dynamically: {} (project={})", PROJECT_ID, TestConstants.PROJECT_NAME);
+        } catch (Exception e) {
+            log.warn("Failed to resolve project ID by name '{}': {}", TestConstants.PROJECT_NAME, e.getMessage());
+            PROJECT_ID = "2058851105448046592"; // fallback
+            TestConstants.PROJECT_ID = PROJECT_ID;
+        }
         navigateToRequirementModule();
     }
 

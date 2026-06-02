@@ -10,8 +10,11 @@ public class TestConfig {
     public static final String BASE_URL = System.getenv().getOrDefault("BASE_URL",
             "https://192.168.6.171:8088");
 
-    /** REST API 前缀 */
+    /** REST API 前缀（需求管理） */
     public static final String API_PREFIX = BASE_URL + "/dev-api";
+
+    /** REST API 前缀（指标管理） */
+    public static final String API_PREFIX_MOE = BASE_URL + "/api-api";
 
     /** 登录页面 */
     public static final String LOGIN_URL = BASE_URL + "/#/login";

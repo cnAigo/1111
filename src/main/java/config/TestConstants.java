@@ -6,10 +6,10 @@ package config;
  */
 public class TestConstants {
 
-    /** 项目 ID（由管理员创建项目时生成，需与环境一致） */
-    public static final String PROJECT_ID = "2058851105448046592";
+    /** 项目 ID — 由 @BeforeAll 通过 API 动态获取 */
+    public static String PROJECT_ID = null;
 
-    /** 项目名称（项目下拉选中的显示文本） */
+    /** 项目名称（用于 API 动态查询 projectId） */
     public static final String PROJECT_NAME = "test";
 
     /** 需求树根节点名称 */
