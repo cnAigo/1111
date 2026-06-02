@@ -62,7 +62,12 @@ public class BaseTest {
             TestConstants.PROJECT_ID = PROJECT_ID;
             log.info("Resolved PROJECT_ID dynamically: {} (project={})", PROJECT_ID, TestConstants.PROJECT_NAME);
         } catch (Exception e) {
-            log.warn("Failed to resolve project ID by name '{}': {}", TestConstants.PROJECT_NAME, e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("500") || msg.contains("系统异常"))) {
+                throw new org.opentest4j.TestAbortedException(
+                    "⛔ 服务端不可用（返回500），跳过本类全部测试。请检查 ERM 等服务是否正常。");
+            }
+            log.warn("Failed to resolve project ID by name '{}': {}", TestConstants.PROJECT_NAME, msg);
             PROJECT_ID = "2058851105448046592"; // fallback
             TestConstants.PROJECT_ID = PROJECT_ID;
         }
