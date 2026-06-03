@@ -20,3 +20,75 @@
 - 交互逻辑：点击按钮后请求 /api/test/run 接口，倒计时结束后将底部的 iframe 显示出来展示 Allure 报告。
 
 请自行创建代码，完成后启动 Spring Boot 服务并告诉我访问地址。
+
+
+
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.*;
+import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import java.util.*;
+
+public class Example {
+  public static void main(String[] args) {
+    try (Playwright playwright = Playwright.create()) {
+      Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+        .setHeadless(false).setSlowMo(300));
+      BrowserContext context = browser.newContext(new Browser.NewContextOptions()
+        .setViewportSize(1920, 1080).setIgnoreHTTPSErrors(true));
+      Page page = context.newPage();
+      page.navigate("https://192.168.6.171:8088/#/RequirementManagement");
+      page.waitForTimeout(2000);
+
+      // 定位需求行并打开编辑
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("新建子级")).click();
+      page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("req-")).click();
+      page.locator(".req-content-container > div").first().dblclick();
+      page.locator(".req-content-container").click(new Locator.ClickOptions()
+        .setButton(MouseButton.RIGHT));
+      page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("req-")).click(new Locator.ClickOptions()
+        .setButton(MouseButton.RIGHT));
+      page.getByText("编辑正文").click();
+      page.locator("#w-e-textarea-1").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H1")).click();
+      page.locator("#w-e-textarea-2").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H2")).click();
+      page.locator("#w-e-textarea-2").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H3")).click();
+      page.locator("#w-e-textarea-3").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H4")).click();
+      page.locator("#w-e-textarea-3").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("粗体\\a ctrl+b")).click();
+      page.locator("#w-e-textarea-3").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("清除格式")).click();
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("清除格式")).click();
+      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^123$"))).first().click();
+      page.locator("#w-e-textarea-3").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("背景色")).click();
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("背景色")).click();
+      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^123$"))).first().click();
+      page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("123")).click(new Locator.ClickOptions()
+        .setButton(MouseButton.RIGHT));
+      page.getByText("编辑正文").click();
+      page.locator("#w-e-textarea-4").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
+      page.locator("li:nth-child(12) > .color-block").click();
+      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^3\\/1000123$"))).nth(1).click();
+      page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName("123")).click();
+      page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName("123")).click();
+      page.getByText("123").dblclick();
+      page.locator("#w-e-textarea-5").press("Control+a");
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("背景色")).click();
+      page.locator("li:nth-child(21) > .color-block").click();
+      page.getByRole(AriaRole.TABLE).locator("div").filter(new Locator.FilterOptions().setHasText("req-00000001默认字号H1H2H3H4")).nth(1).click();
+      page.getByRole(AriaRole.TABLE).locator("div").filter(new Locator.FilterOptions().setHasText("req-00000001默认字号H1H2H3H4")).nth(1).dblclick();
+      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^123$"))).first().click();
+      // 保存 & 刷新
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("保存")).click();
+      page.waitForTimeout(500);
+      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("刷新")).click();
+    }
+  }
+}

@@ -1,23 +1,37 @@
 package org.example.testvue.controller;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.example.testvue.entity.TestConfig;
+import org.example.testvue.entity.TestHistory;
+import org.example.testvue.repository.TestConfigRepository;
+import org.example.testvue.repository.TestHistoryRepository;
 import org.junit.platform.launcher.*;
 import org.junit.platform.launcher.core.*;
 import org.junit.platform.launcher.listeners.*;
 import org.junit.platform.engine.discovery.*;
 import org.junit.platform.engine.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.*;
 import java.nio.file.*;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.*;
 
 @RestController
 @RequestMapping("/api/test")
 public class TestRunnerController {
+
+    @Autowired
+    private TestHistoryRepository historyRepo;
+
+    @Autowired
+    private TestConfigRepository configRepo;
 
     private static final boolean IS_WIN = System.getProperty("os.name").toLowerCase().contains("win");
 
@@ -202,6 +216,15 @@ public class TestRunnerController {
         status = "RUNNING"; msg = ""; label = labelF; durMs = 0; progress = 0;
         progressTotal = 0; currentTaskId = tid;
         synchronized (logBuf) { logBuf.setLength(0); }
+        // Clear old surefire XML so results page only shows current run
+        try {
+            Path sfDir = Paths.get(System.getProperty("user.dir"), "target/surefire-reports");
+            if (Files.exists(sfDir)) {
+                try (DirectoryStream<Path> ds = Files.newDirectoryStream(sfDir, "TEST-*.xml")) {
+                    for (Path f : ds) Files.deleteIfExists(f);
+                }
+            }
+        } catch (Exception ignored) {}
 
         new Thread(() -> execInProcess(tc, mod, labelF, tid)).start();
 
@@ -233,8 +256,15 @@ public class TestRunnerController {
             }
 
             LauncherDiscoveryRequest request = builder.build();
-            Launcher launcher = LauncherFactory.create();
 
+            // Discover test count first using separate launcher so progress bar shows real total
+            Launcher discoverLauncher = LauncherFactory.create();
+            TestPlan plan = discoverLauncher.discover(request);
+            long totalTests = plan.countTestIdentifiers(TestIdentifier::isTest);
+            progressTotal = (int) totalTests;
+            log(totalTests + " test cases discovered");
+
+            Launcher launcher = LauncherFactory.create();
             SummaryGeneratingListener summaryListener = new SummaryGeneratingListener();
             launcher.registerTestExecutionListeners(summaryListener);
 
@@ -278,7 +308,6 @@ public class TestRunnerController {
             // Write surefire-style XML for the /results endpoint
             writeSurefireXml(summary, lb);
 
-            progressTotal = (int) total;
             log("Tests run: " + total + ", Failures: " + failed + ", Passed: " + succeeded);
 
             if (total == 0) {
@@ -291,6 +320,17 @@ public class TestRunnerController {
                 status = "SUCCESS";
                 msg = lb + " — all " + total + " passed";
             }
+
+            // Persist to MySQL
+            try {
+                String logOutput;
+                synchronized (logBuf) { logOutput = logBuf.toString(); }
+                TestHistory h = new TestHistory(taskId, lb, status, fmt(durMs),
+                    (int)succeeded, (int)failed, 0, logOutput,
+                    new Gson().toJson(readSurefireXml()));
+                historyRepo.save(h);
+            } catch (Exception ignored) {}
+
         } catch (Exception e) {
             durMs = System.currentTimeMillis() - t0;
             status = "FAILED";
@@ -401,16 +441,62 @@ public class TestRunnerController {
         return m > 0 ? m + "m" + s + "s" : s + "s";
     }
 
-    // ===== Stub endpoints =====
+    // ===== History endpoints (MySQL-backed) =====
 
     @GetMapping("/history")
-    public List<Map<String, Object>> getHistory() { return Collections.emptyList(); }
+    public List<Map<String, Object>> getHistory() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (TestHistory h : historyRepo.findAllByOrderByCreateTimeDesc()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("taskId", h.getTaskId());
+            m.put("label", h.getLabel());
+            m.put("status", h.getStatus());
+            m.put("createTime", h.getCreateTime() != null ? h.getCreateTime().toString() : "");
+            m.put("durationFmt", h.getDurationFmt());
+            m.put("passed", h.getPassed());
+            m.put("failed", h.getFailed());
+            m.put("skipped", h.getSkipped());
+            list.add(m);
+        }
+        return list;
+    }
 
     @GetMapping("/history/{taskId}/cases")
-    public List<Map<String, Object>> getTaskCases(@PathVariable String taskId) { return Collections.emptyList(); }
+    public List<Map<String, Object>> getTaskCases(@PathVariable String taskId) {
+        List<TestHistory> list = historyRepo.findAllByOrderByCreateTimeDesc();
+        for (TestHistory h : list) {
+            if (taskId.equals(h.getTaskId()) && h.getResultJson() != null) {
+                try { return new Gson().fromJson(h.getResultJson(), new TypeToken<List<Map<String,Object>>>(){}.getType()); } catch (Exception ignored) {}
+            }
+        }
+        return Collections.emptyList();
+    }
 
     @GetMapping("/failed-cases")
-    public List<Map<String, Object>> getFailedCases() { return Collections.emptyList(); }
+    public List<Map<String, Object>> getFailedCases() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TestHistory h : historyRepo.findAllByOrderByCreateTimeDesc()) {
+            if (!"FAILED".equals(h.getStatus()) || h.getResultJson() == null) continue;
+            try {
+                List<Map<String, Object>> cases = new Gson().fromJson(h.getResultJson(), new TypeToken<List<Map<String,Object>>>(){}.getType());
+                for (Map<String, Object> cls : cases) {
+                    List<Map<String, String>> clsCases = (List<Map<String, String>>) cls.get("cases");
+                    if (clsCases == null) continue;
+                    for (Map<String, String> c : clsCases) {
+                        if ("FAIL".equals(c.get("status"))) {
+                            Map<String, Object> fc = new LinkedHashMap<>();
+                            fc.put("className", cls.get("className"));
+                            fc.put("methodName", c.get("name"));
+                            fc.put("reason", c.get("reason"));
+                            fc.put("lastFailTime", h.getCreateTime() != null ? h.getCreateTime().toString() : "");
+                            result.add(fc);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        return result;
+    }
 
     @PostMapping("/rerun-failed")
     public Map<String, Object> rerunFailed(@RequestBody Map<String, String> body) {
@@ -419,7 +505,7 @@ public class TestRunnerController {
 
     @DeleteMapping("/history/{taskId}")
     public Map<String, Object> deleteHistory(@PathVariable String taskId) {
-        taskResults.remove(taskId);
+        historyRepo.deleteByTaskId(taskId);
         return Map.of("code", 200, "msg", "ok");
     }
 
@@ -429,16 +515,39 @@ public class TestRunnerController {
         return Map.of("code", 200, "msg", "已停止");
     }
 
+    // ===== Config endpoints (MySQL-backed) =====
+
     @GetMapping("/configs")
-    public List<Map<String, Object>> getConfigs() { return Collections.emptyList(); }
+    public List<Map<String, Object>> getConfigs() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (TestConfig c : configRepo.findAll()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("configName", c.getConfigName());
+            m.put("url", c.getUrl());
+            m.put("projectId", c.getProjectId());
+            m.put("username", c.getUsername());
+            m.put("password", c.getPassword());
+            list.add(m);
+        }
+        return list;
+    }
 
     @PostMapping("/configs")
     public Map<String, Object> saveConfig(@RequestBody Map<String, String> body) {
-        return Map.of("code", 200, "msg", "ok", "id", 1);
+        TestConfig c = new TestConfig(
+            body.getOrDefault("configName", ""), body.getOrDefault("url", ""),
+            body.getOrDefault("projectId", ""), body.getOrDefault("username", ""),
+            body.getOrDefault("password", ""));
+        c = configRepo.save(c);
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("code", 200); r.put("msg", "ok"); r.put("id", c.getId());
+        return r;
     }
 
     @DeleteMapping("/configs/{id}")
     public Map<String, Object> deleteConfig(@PathVariable Long id) {
+        configRepo.deleteById(id);
         return Map.of("code", 200, "msg", "ok");
     }
 }
