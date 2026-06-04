@@ -8,6 +8,223 @@
 - 逻辑：根据传入的 module 动态拼接 Maven 测试命令。
 - 使用 Java 的 ProcessBuilder 在后台异步执行两条命令：先执行 mvn test，测试完成后，执行 mvn allure:report 生成静态报告。
 - 注意：请使用 @Async 异步执行，并立刻给前端返回 "测试已启动" 的 JSON 响应。
+● 前端分析与优化建议
+
+  一、单文件巨石 — 首要问题
+
+  770 行全部塞在 App.jsx 里。无组件拆分、无路由库、无自定义 Hook。当前架构：
+
+  App.jsx (770行)
+  ├── 25 个 useState
+  ├── 12 个 useCallback/useEffect
+  ├── 常量/配置数据 (MODULES, MODULE_OPTIONS, MENU_ITEMS...)
+  ├── renderSidebar()
+  ├── renderHeader()
+  ├── renderTerminal()
+  ├── renderReport()
+  ├── renderResults()
+  ├── renderHistory()
+  ├── renderFailed()
+  ├── renderSettings()
+  └── renderConfigModal()
+
+  建议拆分为：
+
+  src/
+  ├── App.jsx                    ← 路由 + 全局状态
+  ├── components/
+  │   ├── Layout.jsx             ← 侧边栏 + 内容区壳子
+  │   ├── Sidebar.jsx            ← 导航 + 状态指示
+  │   ├── Header.jsx             ← 标题 + 下拉选择器 + 开始/停止按钮
+  │   └── Toast.jsx
+  ├── pages/
+  │   ├── Dashboard.jsx          ← Terminal + Report
+  │   ├── Results.jsx
+  │   ├── History.jsx
+  │   ├── FailedCases.jsx
+  │   └── Settings.jsx
+  ├── hooks/
+  │   ├── usePolling.js          ← 轮询状态逻辑
+  │   ├── useTestRun.js          ← 测试执行（start/stop/poll）
+  │   └── useConfig.js           ← 配置管理
+  └── data/
+      └── modules.js             ← MODULES / MODULE_OPTIONS 配置
+
+  ---
+  二、手写路由 — 应用 react-router
+
+  当前用 activeMenu + if-else 实现页面切换，存在以下问题：
+
+  - 无法收藏/分享特定页面（如 /history）
+  - 浏览器后退按钮无效
+  - 页面状态在切换时丢失（比如从结果页切回仪表盘再切回来，结果数据没了）
+
+  // 当前
+  {page === 'results' && renderResults()}
+  {page === 'history' && renderHistory()}
+
+  // 建议
+  <Routes>
+    <Route path="/" element={<Dashboard />} />
+    <Route path="/results" element={<Results />} />
+    <Route path="/history" element={<History />} />
+    <Route path="/failed" element={<FailedCases />} />
+    <Route path="/settings" element={<Settings />} />
+  </Routes>
+
+  ---
+  三、状态管理过于分散
+
+  25 个 useState 平铺在一个组件里，没有分组。相关状态应该聚合：
+
+  // 当前 — 7个独立状态管理测试运行
+  const [isRunning, ...] = useState(false);
+  const [taskId, ...] = useState(null);
+  const [status, ...] = useState('IDLE');
+  const [progress, ...] = useState(0);
+  const [progressTotal, ...] = useState(0);
+  const [durationFmt, ...] = useState('');
+  const [runningLabel, ...] = useState('');
+
+  // 建议 — 一个 useReducer 或自定义 hook
+  const { isRunning, taskId, status, progress, progressTotal, durationFmt, label,
+          startRun, stopRun } = useTestRun();
+
+  同理配置相关 7 个状态也可以抽成 useConfig() hook。
+
+  ---
+  四、UX 设计问题
+
+  ┌────────────────────┬──────────────────────────────────────┬────────────────────────────────────────────────────────────┐
+  │        问题        │                 现状                 │                            建议                            │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 测试中途切页面     │ 轮询继续但用户看不到进度             │ 侧边栏状态指示器实时显示进度条，或在顶部全局显示运行中任务 │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ Rerun 按钮跑全部   │ 按钮名「Rerun」实际跑全模块          │ 要么改成只重跑失败的类，要么按钮文案改为「Run All」        │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 历史记录不可点击   │ 只能看到 label、状态、删除/Rerun     │ 点击展开查看具体用例结果、控制台输出                       │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 失败用例页无上下文 │ 只显示类名+方法名+原因               │ 加一列链接到原始测试运行的完整日志                         │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 设置页是空壳       │ 只是一个引导按钮                     │ 去掉中间页，直接点击侧边栏「平台设置」打开配置弹窗         │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 终端日志自动滚     │ 用户手动上滚查看旧日志时会被拉回底部 │ 检测用户是否在底部，仅在底部时自动滚                       │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 无加载骨架屏       │ 数据加载时页面空白                   │ 加 loading spinner 或骨架屏                                │
+  ├────────────────────┼──────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+  │ 桌面端专属         │ 620px 下拉框，无响应式               │ 至少让侧边栏可折叠，表格横向滚动                           │
+  └────────────────────┴──────────────────────────────────────┴────────────────────────────────────────────────────────────┘
+
+  ---
+  五、错误处理和边界情况
+
+  // 当前 — 所有错误一视同仁
+  const loadHistory = async () => {
+    try { const d = await apiGet('/api/test/history'); setHistoryList(d); }
+    catch {}  // ← 网络断开、500错误、JSON解析失败，全部静默
+  };
+
+  // 建议
+  const loadHistory = async () => {
+    try {
+      const d = await apiGet('/api/test/history');
+      if (Array.isArray(d)) setHistoryList(d);
+      else setError('返回数据格式异常');
+    } catch (e) {
+      if (e instanceof TypeError) showToast('网络连接失败，请检查服务是否启动', 'error');
+      else showToast('加载失败: ' + e.message, 'error');
+    }
+  };
+
+  同样的问题在 loadResults、loadFailedCases、loadConfigs 中重复。
+
+  ---
+  六、性能问题
+
+  6a. 终端日志重渲染
+
+  800 行日志，每行一个 div，每次新增一行全量重渲染。useCallback 包了 appendLog 但由于依赖数组很大，效果有限。
+
+  建议：用 react-window 虚拟列表，或至少用 React.memo 包裹日志行组件。
+
+  6b. pollStatus 1.5 秒一次
+
+  pollRef.current = setInterval(() => pollStatus(d.taskId), 1500);
+
+  如果后端 mvn test 跑 10 分钟，前端会发 400 次 /api/test/status 请求。每次返回的 output 字段是整个控制台输出文本，随测试推进越来越大（可能几MB）。
+
+  建议：后端支持增量输出（传 offset 参数），或者用 WebSocket/SSE 推送替代轮询。
+
+  6c. 计算属性未 memo
+
+  // 每次渲染都重新计算
+  const totalR = testResults.reduce(...);
+  const passedR = testResults.reduce(...);  // 对同一个数组做了3次 reduce
+
+  建议：useMemo 包裹，一次 reduce 算出全部统计。
+
+  ---
+  七、配置管理没有闭环
+
+  这是最核心的功能缺陷：
+
+  用户操作流程：
+    打开设置 → 填 URL/项目ID/用户名/密码 → 保存 → 选择模块 → 开始测试
+
+  实际发生的事情：
+    保存 ✅  → 选择了模块 ✅  → 开始测试...
+    但传给 /api/test/run 的 url/projectId/username/password 被后端丢弃
+    实际测试始终跑在 TestConfig.BASE_URL 指向的服务器上
+
+  建议方案：
+
+  ┌───────────────────────────────────────────────┬──────────────────────────────────────────────────────┐
+  │                     前端                      │                         后端                         │
+  ├───────────────────────────────────────────────┼──────────────────────────────────────────────────────┤
+  │ 开始测试时把 configId 传给后端                │ TestExecutionService 用 -DBASE_URL=xxx 传给 mvn 进程 │
+  ├───────────────────────────────────────────────┼──────────────────────────────────────────────────────┤
+  │ 或者不传 configId，从已保存配置中取当前激活的 │ ProcessBuilder 加环境变量覆盖 TestConfig 的 fallback │
+  └───────────────────────────────────────────────┴──────────────────────────────────────────────────────┘
+
+  这样设置页才能真正切换测试目标环境（开发/测试/生产）。
+
+  ---
+  八、MODULES 硬编码测试类数据
+
+  const MODULES = [
+    { tag:'ReqFolderModule', label:'需求与目录', classes:[
+      { name:'FolderApiTest', type:'api', desc:'...' },
+      ...
+    ]},
+    ...
+  ];
+
+  47 个测试类的手写元数据在前端代码里。每次新增/删除测试类都要改前端。
+
+  建议：后端提供一个 /api/test/classes 接口，返回已发现的测试类和模块信息，前端动态渲染。
+
+  ---
+  九、优先级总结
+
+  ┌────────┬────────────────────────────────┬──────────────┐
+  │ 优先级 │              建议              │     收益     │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P0     │ 配置管理闭环（设置页真正生效） │ 核心功能可用 │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P1     │ 拆分组件 + react-router        │ 可维护性     │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P1     │ 错误处理                       │ 用户体验     │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P2     │ 状态管理重构（自定义 hooks）   │ 代码质量     │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P2     │ 历史记录可点击查看详情         │ 用户体验     │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P3     │ 终端虚拟列表                   │ 性能         │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P3     │ 后端提供测试类列表接口         │ 解耦         │
+  ├────────┼────────────────────────────────┼──────────────┤
+  │ P3     │ SSE 推送替代轮询               │ 性能和实时性 │
+  └────────┴────────────────────────────────┴──────────────┘
 
 任务 2：配置静态资源映射 (WebConfig.java)
 - 在 config 目录下新建 WebConfig.java 实现 WebMvcConfigurer。
@@ -20,75 +237,3 @@
 - 交互逻辑：点击按钮后请求 /api/test/run 接口，倒计时结束后将底部的 iframe 显示出来展示 Allure 报告。
 
 请自行创建代码，完成后启动 Spring Boot 服务并告诉我访问地址。
-
-
-
-import com.microsoft.playwright.*;
-import com.microsoft.playwright.options.*;
-import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
-import java.util.*;
-
-public class Example {
-  public static void main(String[] args) {
-    try (Playwright playwright = Playwright.create()) {
-      Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
-        .setHeadless(false).setSlowMo(300));
-      BrowserContext context = browser.newContext(new Browser.NewContextOptions()
-        .setViewportSize(1920, 1080).setIgnoreHTTPSErrors(true));
-      Page page = context.newPage();
-      page.navigate("https://192.168.6.171:8088/#/RequirementManagement");
-      page.waitForTimeout(2000);
-
-      // 定位需求行并打开编辑
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("新建子级")).click();
-      page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("req-")).click();
-      page.locator(".req-content-container > div").first().dblclick();
-      page.locator(".req-content-container").click(new Locator.ClickOptions()
-        .setButton(MouseButton.RIGHT));
-      page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("req-")).click(new Locator.ClickOptions()
-        .setButton(MouseButton.RIGHT));
-      page.getByText("编辑正文").click();
-      page.locator("#w-e-textarea-1").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H1")).click();
-      page.locator("#w-e-textarea-2").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H2")).click();
-      page.locator("#w-e-textarea-2").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H3")).click();
-      page.locator("#w-e-textarea-3").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("H4")).click();
-      page.locator("#w-e-textarea-3").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("粗体\\a ctrl+b")).click();
-      page.locator("#w-e-textarea-3").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("清除格式")).click();
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("清除格式")).click();
-      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^123$"))).first().click();
-      page.locator("#w-e-textarea-3").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("背景色")).click();
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("背景色")).click();
-      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^123$"))).first().click();
-      page.getByRole(AriaRole.CELL, new Page.GetByRoleOptions().setName("123")).click(new Locator.ClickOptions()
-        .setButton(MouseButton.RIGHT));
-      page.getByText("编辑正文").click();
-      page.locator("#w-e-textarea-4").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("文字颜色")).click();
-      page.locator("li:nth-child(12) > .color-block").click();
-      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^3\\/1000123$"))).nth(1).click();
-      page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName("123")).click();
-      page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setName("123")).click();
-      page.getByText("123").dblclick();
-      page.locator("#w-e-textarea-5").press("Control+a");
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("背景色")).click();
-      page.locator("li:nth-child(21) > .color-block").click();
-      page.getByRole(AriaRole.TABLE).locator("div").filter(new Locator.FilterOptions().setHasText("req-00000001默认字号H1H2H3H4")).nth(1).click();
-      page.getByRole(AriaRole.TABLE).locator("div").filter(new Locator.FilterOptions().setHasText("req-00000001默认字号H1H2H3H4")).nth(1).dblclick();
-      page.locator("div").filter(new Locator.FilterOptions().setHasText(Pattern.compile("^123$"))).first().click();
-      // 保存 & 刷新
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("保存")).click();
-      page.waitForTimeout(500);
-      page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("刷新")).click();
-    }
-  }
-}
