@@ -96,6 +96,7 @@
                 <configuration>
                     <groups>${groups}</groups>
                     <excludedGroups>${excludedGroups}</excludedGroups>
+                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     <forkCount>0</forkCount>
                     <trimStackTrace>false</trimStackTrace>
                     <systemPropertyVariables>

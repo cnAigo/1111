@@ -7,6 +7,7 @@ import org.example.testvue.repository.TestConfigRepository;
 import org.example.testvue.entity.TestCaseDetail;
 import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
+import org.example.testvue.service.CleanupService;
 import org.example.testvue.service.SurefireParser;
 import org.example.testvue.service.TestExecutionService;
 import org.springframework.data.domain.PageRequest;
@@ -25,15 +26,18 @@ public class TestRunnerController {
     private final TestHistoryRepository historyRepo;
     private final TestConfigRepository configRepo;
     private final TestCaseDetailRepository caseDetailRepo;
+    private final CleanupService cleanupService;
 
     public TestRunnerController(TestExecutionService execService,
                                 TestHistoryRepository historyRepo,
                                 TestConfigRepository configRepo,
-                                TestCaseDetailRepository caseDetailRepo) {
+                                TestCaseDetailRepository caseDetailRepo,
+                                CleanupService cleanupService) {
         this.execService = execService;
         this.historyRepo = historyRepo;
         this.configRepo = configRepo;
         this.caseDetailRepo = caseDetailRepo;
+        this.cleanupService = cleanupService;
     }
 
     // ── Run ──
@@ -246,5 +250,17 @@ public class TestRunnerController {
         }
         caseDetailRepo.saveAll(entities);
         return Map.of("code", 200, "msg", "ok", "count", entities.size());
+    }
+
+    // ── Cleanup ──
+
+    @PostMapping("/cleanup")
+    public Map<String, Object> cleanup(@RequestBody(required = false) Map<String, String> body) {
+        String projectId = body != null ? body.getOrDefault("projectId", "") : "";
+        execService.startCleanup(projectId,
+            body != null ? body.getOrDefault("url", "") : "",
+            body != null ? body.getOrDefault("username", "") : "",
+            body != null ? body.getOrDefault("password", "") : "");
+        return Map.of("code", 200, "msg", "ok");
     }
 }
