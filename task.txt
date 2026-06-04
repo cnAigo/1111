@@ -1,53 +1,50 @@
-    @Test
-    @Order(1)
-    @DisplayName("清理")
-    @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    public void test01(){
-        api.cleanFolderByName(TestConstants.PROJECT_ID,TestConstants.PARENT_FOLDER);
+明白了，你的意思是：不要按名字找某个文件夹再清理，而是直接把项目根节点下的**所有子文件夹/文档全部删掉**。
+
+改法如下：
+
+**1. 新增一个方法 `cleanAllUnderProject`**
+
+```java
+public void cleanAllUnderProject(String projectId) {
+
+    log.info("====== 开始清理环境 ======");
+
+    String resp = getTree(projectId, projectId);
+
+    JsonObject root = null;
+
+    try {
+        root = JsonParser.parseString(resp).getAsJsonObject();
+    } catch (Exception e) {
+        log.error("❌ 清理失败：获取目录树的接口返回了非 JSON 数据！");
+        log.error("❌ 接口返回的真实内容是: \n{}", resp);
+        return;
     }
-    public void cleanFolderByName(String projectId, String targetName) {
-        log.info("====== 开始清理环境 ======");
 
-        String resp = getTree(projectId, projectId);
-        JsonObject root = null;
+    if (!root.has("data") || root.get("data").isJsonNull()) {
+        log.warn("获取到的树结构中没有 data 字段，无需清理");
+        return;
+    }
 
-        // 👇 给解析 JSON 穿上防弹衣 👇
-        try {
-            root = JsonParser.parseString(resp).getAsJsonObject();
-        } catch (Exception e) {
-            log.error("❌ 清理失败：获取目录树的接口返回了非 JSON 数据！");
-            log.error("❌ 接口返回的真实内容是: \n{}", resp);
-            return; // 遇到接口报错直接退出清理，不让程序崩溃，去跑后面的 UI 测试
-        }
-        // 👆 防弹衣结束 👆
+    JsonArray dataList = root.getAsJsonArray("data");
 
-        // 防止 data 为空导致后面的代码空指针
-        if (!root.has("data") || root.get("data").isJsonNull()) {
-            log.warn("获取到的树结构中没有 data 字段，无需清理");
-            return;
-        }
+    if (dataList.size() == 0) {
+        log.info("根节点下没有任何子项，无需清理");
+        return;
+    }
 
-        JsonArray dataList = root.getAsJsonArray("data");
+    // 遍历根节点下的 所有 子项，逐个清理
+    for (JsonElement el : dataList) {
+        JsonObject node = el.getAsJsonObject();
+        String nodeId = node.get("objectId").getAsString();
+        String nodeTitle = node.get("title").getAsString();
+        String nodeType = node.get("type").getAsString();
 
-        JsonObject targetNode = null;
-        for (JsonElement el : dataList) {
-            JsonObject node = el.getAsJsonObject();
-            if (targetName.equals(node.get("title").getAsString())) {
-                targetNode = node;
-                break;
-            }
-        }
+        log.info("锁定目标: [{}] (ID: {}, Type: {})", nodeTitle, nodeId, nodeType);
 
-        if (targetNode == null) {
-            log.info("未找到 [{}]，无需清理", targetName);
-            return;
-        }
-
-        String folderId = targetNode.get("objectId").getAsString();
-        log.info("锁定目标文件夹 ID: {}", folderId);
-
-        if (targetNode.has("children") && !targetNode.get("children").isJsonNull()) {
-            JsonArray children = targetNode.getAsJsonArray("children");
+        // 先递归清理该节点下的所有子内容
+        if (node.has("children") && !node.get("children").isJsonNull()) {
+            JsonArray children = node.getAsJsonArray("children");
             for (JsonElement childEl : children) {
                 JsonObject child = childEl.getAsJsonObject();
                 String childId = child.get("objectId").getAsString();
@@ -55,46 +52,51 @@
                 String childType = child.get("type").getAsString();
 
                 if (PARENT_TYPE_FOLDER.equals(childType)) {
-                    deleteFolder(childId, folderId, PARENT_TYPE_FOLDER);
+                    deleteFolder(childId, nodeId, PARENT_TYPE_FOLDER);
                     forceCleanFolder(childId);
                     log.info("  已清理子文件夹: {}", childTitle);
                 } else if ("reqSpe".equals(childType)) {
-                    deleteDocument(childId, folderId);
-                    forceCleanDocument(childId, folderId);
+                    deleteDocument(childId, nodeId);
+                    forceCleanDocument(childId, nodeId);
                     log.info("  已清理需求规格: {}", childTitle);
                 }
             }
         }
 
-        deleteFolder(folderId, projectId, PARENT_TYPE_PROJECT);
-        forceCleanFolder(folderId);
-
-        log.info("\n====== 清理环境结束 ======");
+        // 再删除该节点本身
+        if (PARENT_TYPE_FOLDER.equals(nodeType)) {
+            deleteFolder(nodeId, projectId, PARENT_TYPE_PROJECT);
+            forceCleanFolder(nodeId);
+            log.info("  已删除文件夹: {}", nodeTitle);
+        } else if ("reqSpe".equals(nodeType)) {
+            deleteDocument(nodeId, projectId);
+            forceCleanDocument(nodeId, projectId);
+            log.info("  已删除需求规格: {}", nodeTitle);
+        }
     }
 
-    private void forceCleanFolder(String objectId) {
-        String recoverPayload = """
-                {"objectId": "%s", "parentId": "%s"}
-                """.formatted(objectId, objectId);
-        String cleanPayload = """
-                {"objectId": "%s"}
-                """.formatted(objectId);
+    log.info("\n====== 清理环境结束 ======");
+}
+```
 
-        // 改为调用统一的 post 方法，这样就能自动带上 Token 了
-        post(ERM_RECOVER_FOLDER, recoverPayload);
-        post(ERM_CLEAN_FOLDER, cleanPayload);
-    }
+**2. 测试方法改成调用新方法**
 
-    private void forceCleanDocument(String objectId, String parentId) {
-        String payload = """
-                {
-                    "objectId": "%s",
-                    "parentId": "%s",
-                    "parentType":
-                }
-                """.formatted(objectId, parentId, PARENT_TYPE_FOLDER);
+```java
+@Test
+@Order(1)
+@DisplayName("清理")
+@Timeout(value = 30, unit = TimeUnit.SECONDS)
+public void test01() {
+    api.cleanAllUnderProject(TestConstants.PROJECT_ID);
+}
+```
 
-        // 同理，改为调用统一的 post 方法
-        post(ERM_RECOVER_DOC, payload);
-        post(ERM_CLEAN_DOC, payload);
-    }
+**核心变化：**
+
+| 原来 | 现在 |
+|---|---|
+| 按 `targetName` 在 `data` 里找一个文件夹 | 直接遍历 `data` 里**全部子项** |
+| 只清理匹配的那一整个文件夹 | 根节点下每个文件夹/文档都删 |
+| 需要传文件夹名字 | 只需要传 `projectId` |
+
+这样不管根节点下有几个文件夹、叫什么名字，通通清干净。

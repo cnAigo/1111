@@ -34,6 +34,12 @@
         <appender-ref ref="FILE"/>
     </logger>
 
+    <!-- Cleanup service logs on console -->
+    <logger name="org.example.testvue.service" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </logger>
+
     <root level="WARN">
         <appender-ref ref="FILE"/>
     </root>

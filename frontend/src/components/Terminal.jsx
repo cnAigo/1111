@@ -58,7 +58,7 @@ export default function Terminal({ lines, isRunning, elapsedFmt, onClear, logFil
       {isRunning && runningLabel && (
         <div className="px-4 py-1.5 bg-slate-800 border-t border-slate-700 flex items-center gap-3 text-[11px]">
           <span className="text-slate-400">▶ {runningLabel}</span>
-          <span className="text-emerald-400 font-mono">{progress}/{progressTotal || '?'} passed</span>
+          <span className="text-emerald-400 font-mono">{progress}/{progressTotal || '?'}</span>
         </div>
       )}
       {/* Progress bar */}

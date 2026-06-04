@@ -1,6 +1,8 @@
 package org.example.testvue.service;
 
 import com.google.gson.*;
+import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.RequestOptions;
 import org.example.testvue.dto.Dtos.*;
 import org.example.testvue.entity.TestConfigEntity;
 import org.example.testvue.entity.TestHistory;
@@ -117,24 +119,24 @@ public class TestExecutionService {
     public boolean isRunning() { return "RUNNING".equals(status); }
 
     // ── Cleanup ──
+    // Uses Playwright APIRequestContext to load auth.json (browser SSO state),
+    // then calls target server APIs directly. Playwright is launched with
+    // PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 to avoid browser driver download.
 
     public synchronized void startCleanup(String projectId, String url, String username, String password) {
         if ("RUNNING".equals(status)) return;
         stopFlag.set(false);
         status = "RUNNING"; msg = ""; label = "清理环境";
-        durMs = 0; progress = 0; progressTotal = 100;
+        durMs = 0; progress = 0; progressTotal = 0;
         synchronized (logBuf) { logBuf.setLength(0); }
+        currentTaskId = "cleanup";
         String base = (url != null && !url.isBlank()) ? url : "https://192.168.6.171:8088";
         String user = (username != null && !username.isBlank()) ? username : "admin";
         String pass = (password != null && !password.isBlank()) ? password : "Aa123456";
-        // Fallback to DB config
-        if ((projectId == null || projectId.isBlank()) && (base == null || base.isBlank())) {
+        if ((projectId == null || projectId.isBlank())) {
             List<TestConfigEntity> cfs = configRepo.findAll();
             if (!cfs.isEmpty()) {
                 TestConfigEntity c = cfs.get(0);
-                if (c.getUrl() != null && !c.getUrl().isBlank()) base = c.getUrl();
-                if (c.getUsername() != null && !c.getUsername().isBlank()) user = c.getUsername();
-                if (c.getPassword() != null && !c.getPassword().isBlank()) pass = c.getPassword();
                 if (c.getProjectId() != null && !c.getProjectId().isBlank()) projectId = c.getProjectId();
             }
         }
@@ -144,58 +146,227 @@ public class TestExecutionService {
 
     private void execCleanup(String base, String user, String pass, String projectId) {
         long t0 = System.currentTimeMillis();
+        Playwright playwright = null;
+        Browser browser = null;
         try {
             log("====== 开始清理环境 ======");
             if (projectId == null || projectId.isBlank()) { status = "FAILED"; msg = "未配置projectId"; return; }
             String apiBase = base + "/dev-api";
+            Path authPath = Paths.get("auth.json");
 
-            // Login
-            log("正在登录...");
-            String loginBody = "{\"username\":\"" + user + "\",\"password\":\"" + pass + "\"}";
-            HttpRequest loginReq = HttpRequest.newBuilder().uri(URI.create(base + "/login-api/auth/token/login"))
-                .timeout(java.time.Duration.ofSeconds(30)).header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(loginBody)).build();
-            HttpResponse<String> loginResp = HC.send(loginReq, HttpResponse.BodyHandlers.ofString());
-            String cookie = loginResp.headers().firstValue("Set-Cookie").orElse("");
-            log("登录完成");
+            // Launch browser
+            log("启动浏览器...");
+            playwright = Playwright.create();
+            BrowserType.LaunchOptions launchOpts = new BrowserType.LaunchOptions().setHeadless(true);
+            String chromeEnv = System.getenv("CHROME_PATH");
+            if (chromeEnv != null && !chromeEnv.isBlank() && Files.exists(Paths.get(chromeEnv))) {
+                launchOpts.setExecutablePath(Paths.get(chromeEnv));
+            } else {
+                Path defChrome = Paths.get("C:/Program Files/Google/Chrome/Application/chrome.exe");
+                if (Files.exists(defChrome)) launchOpts.setExecutablePath(defChrome);
+            }
+            browser = playwright.chromium().launch(launchOpts);
+
+            // Step 1: Create context WITH auth.json if exists, test if still valid
+            BrowserContext ctx;
+            Page page;
+            Browser.NewContextOptions ctxOpts = new Browser.NewContextOptions()
+                .setIgnoreHTTPSErrors(true).setViewportSize(1920, 1080);
+            boolean hasAuth = Files.exists(authPath);
+            if (hasAuth) {
+                ctxOpts.setStorageStatePath(authPath);
+                log("已加载 auth.json");
+            }
+            ctx = browser.newContext(ctxOpts);
+            page = ctx.newPage();
+            page.setDefaultTimeout(15000);
+
+            APIRequestContext api = page.request();
+            boolean authOk = false;
+
+            if (hasAuth) {
+                log("验证认证状态...");
+                try {
+                    // Refresh authCode via API
+                    api.post(base + "/login-api/auth/token/login",
+                        RequestOptions.create().setHeader("Content-Type", "application/json")
+                            .setData("{\"username\":\"" + user + "\",\"password\":\"" + pass + "\"}"));
+                    // Test tree API
+                    APIResponse test = api.post(apiBase + "/erm/search/searchReqFolderStructureTree",
+                        RequestOptions.create().setHeader("Content-Type", "application/json")
+                            .setData("{\"projectId\":\"" + projectId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}"));
+                    if (test.status() == 200) {
+                        authOk = true;
+                        log("认证有效");
+                    } else {
+                        log("认证已过期(HTTP " + test.status() + ")，需要重新登录");
+                    }
+                } catch (Exception e) {
+                    log("认证检查异常: " + e.getMessage());
+                }
+            }
+
+            if (!authOk) {
+                // Close old context, create fresh one WITHOUT auth.json
+                ctx.close();
+                try { Files.deleteIfExists(authPath); } catch (Exception ignored) {}
+                log("创建全新浏览器会话...");
+                ctx = browser.newContext(new Browser.NewContextOptions()
+                    .setIgnoreHTTPSErrors(true).setViewportSize(1920, 1080));
+                page = ctx.newPage();
+                page.setDefaultTimeout(15000);
+                api = page.request();
+
+                // Navigate to app, wait for SPA to redirect to login
+                log("导航到目标系统...");
+                page.navigate(base + "/#/RequirementManagement");
+                try { page.waitForLoadState(); } catch (Exception ignored) {}
+                Thread.sleep(5000);
+
+                String currentUrl = page.url();
+                log("当前URL: " + currentUrl);
+
+                // Check if on login page
+                boolean onLoginPage = currentUrl.contains("/login")
+                    || page.locator("input[type='password']").count() > 0;
+
+                if (onLoginPage) {
+                    log("检测到登录表单，自动登录...");
+                    try {
+                        page.locator("input[type='text']").first().fill(user);
+                        page.locator("input[type='password']").first().fill(pass);
+                        page.locator("button[type='submit']").first().click();
+                        page.waitForURL(url -> !url.contains("/login"), new Page.WaitForURLOptions().setTimeout(30000));
+                        log("SSO 登录完成");
+                    } catch (Exception e) {
+                        log("登录交互失败: " + e.getMessage());
+                    }
+                } else {
+                    // Maybe SPA uses hash routing; try navigating to login page directly
+                    log("未检测到登录页，尝试直接访问登录页...");
+                    try {
+                        page.navigate(base + "/login");
+                        Thread.sleep(3000);
+                        if (page.locator("input[type='password']").count() > 0) {
+                            page.locator("input[type='text']").first().fill(user);
+                            page.locator("input[type='password']").first().fill(pass);
+                            page.locator("button[type='submit']").first().click();
+                            page.waitForURL(url -> !url.contains("/login"), new Page.WaitForURLOptions().setTimeout(30000));
+                            log("登录完成(直接访问/login)");
+                        }
+                    } catch (Exception e2) {
+                        log("直接访问登录页也失败: " + e2.getMessage());
+                    }
+                }
+
+                // Save new auth state
+                try { ctx.storageState(new BrowserContext.StorageStateOptions().setPath(authPath)); } catch (Exception ignored) {}
+                log("已保存新认证到 auth.json");
+
+                // Refresh api context after login
+                api = page.request();
+                api.post(base + "/login-api/auth/token/login",
+                    RequestOptions.create().setHeader("Content-Type", "application/json")
+                        .setData("{\"username\":\"" + user + "\",\"password\":\"" + pass + "\"}"));
+                try { ctx.storageState(new BrowserContext.StorageStateOptions().setPath(authPath)); } catch (Exception ignored) {}
+            }
 
             // Get tree
             log("获取目录树...");
-            HttpRequest treeReq = HttpRequest.newBuilder().uri(URI.create(apiBase + "/erm/search/searchReqFolderStructureTree"))
-                .timeout(java.time.Duration.ofSeconds(30)).header("Content-Type", "application/json").header("Cookie", cookie)
-                .POST(HttpRequest.BodyPublishers.ofString("{\"projectId\":\"" + projectId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}")).build();
-            String treeResp = HC.send(treeReq, HttpResponse.BodyHandlers.ofString()).body();
-            JsonObject treeRoot = new Gson().fromJson(treeResp, JsonObject.class);
-            if (treeRoot.get("code").getAsInt() != 200) { status = "FAILED"; msg = "获取目录树失败"; return; }
-            JsonArray treeData = treeRoot.getAsJsonArray("data");
-            if (treeData == null || treeData.size() == 0) { log("空树，无需清理"); status = "SUCCESS"; msg = "目录树为空"; return; }
+            APIResponse treeResp = api.post(apiBase + "/erm/search/searchReqFolderStructureTree",
+                RequestOptions.create().setHeader("Content-Type", "application/json")
+                    .setData("{\"projectId\":\"" + projectId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}"));
+            String treeBody = treeResp.text();
+            if (treeResp.status() != 200) {
+                log("树API返回 " + treeResp.status() + ": " + treeBody.substring(0, Math.min(300, treeBody.length())));
+                status = "FAILED"; msg = "认证失败，请先在浏览器中手动登录一次目标系统"; return;
+            }
+            JsonObject root = new Gson().fromJson(treeBody, JsonObject.class);
+            if (!root.has("data") || root.get("data").isJsonNull()) {
+                log("树响应无data: " + treeBody.substring(0, Math.min(200, treeBody.length())));
+                status = "SUCCESS"; msg = "空"; return;
+            }
+            JsonArray dataList = root.getAsJsonArray("data");
+            if (dataList.size() == 0) { status = "SUCCESS"; msg = "空"; return; }
 
-            // Collect nodes
-            List<String[]> nodes = new ArrayList<>();
-            collectCleanupNodes(treeData, nodes);
-            Collections.reverse(nodes);
-            log("找到 " + nodes.size() + " 个节点");
-            progressTotal = nodes.size(); progress = 0;
+            // Count and clean
+            List<JsonObject> workList = new ArrayList<>();
+            for (JsonElement el : dataList) {
+                JsonObject node = el.getAsJsonObject();
+                workList.add(node);
+                countChildren(node, workList);
+            }
+            int total = workList.size();
+            progressTotal = total; progress = 0;
+            log("找到 " + total + " 个节点，开始清理...");
 
             int count = 0;
-            for (String[] node : nodes) {
-                if (stopFlag.get()) { status = "IDLE"; msg = "已停止"; return; }
-                String type = node[0], objectId = node[1], parentId = node[2];
-                String pt = projectId.equals(parentId) ? "project" : "reqSpeFolder";
+            for (JsonElement el : dataList) {
+                if (stopFlag.get()) { status = "STOPPED"; return; }
+                JsonObject node = el.getAsJsonObject();
+                String nodeId = node.get("objectId").getAsString();
+                String nodeTitle = node.has("title") ? node.get("title").getAsString() : nodeId;
+                String nodeType = node.get("type").getAsString();
 
-                String delPath = "reqSpe".equals(type) ? "/erm/del/delReqSpe" : "req".equals(type) ? "/erm/del/delReqObjectList" : "/erm/del/delReqSpeFolder";
-                String delBody = "req".equals(type) ? "{\"objectId\":\"" + objectId + "\"}" : "{\"objectId\":\"" + objectId + "\",\"parentId\":\"" + parentId + "\",\"parentType\":\"" + pt + "\"}";
-                sendCleanup(apiBase + delPath, cookie, delBody);
-                Thread.sleep(500);
+                if (node.has("children") && !node.get("children").isJsonNull()) {
+                    for (JsonElement childEl : node.getAsJsonArray("children")) {
+                        if (stopFlag.get()) { status = "STOPPED"; return; }
+                        JsonObject child = childEl.getAsJsonObject();
+                        String cId = child.get("objectId").getAsString();
+                        String cTitle = child.has("title") ? child.get("title").getAsString() : cId;
+                        String cType = child.get("type").getAsString();
 
-                String cleanPath = "reqSpe".equals(type) ? "/erm/clean/cleanReqSpe" : "req".equals(type) ? "/erm/clean/cleanReq" : "/erm/clean/cleanReqSpeFolder";
-                String cleanBody = "req".equals(type) ? "{\"objectId\":\"" + objectId + "\",\"reqSpecId\":\"" + parentId + "\"}" : "{\"objectId\":\"" + objectId + "\",\"parentId\":\"" + parentId + "\",\"parentType\":\"" + pt + "\"}";
-                sendCleanup(apiBase + cleanPath, cookie, cleanBody);
-                Thread.sleep(500);
+                        if ("reqSpeFolder".equals(cType)) {
+                            api.post(apiBase + "/erm/del/delReqSpeFolder",
+                                RequestOptions.create().setHeader("Content-Type", "application/json")
+                                    .setData("{\"objectId\":\"" + cId + "\",\"parentId\":\"" + nodeId + "\",\"parentType\":\"reqSpeFolder\"}"));
+                            Thread.sleep(300);
+                            api.post(apiBase + "/erm/clean/cleanReqSpeFolder",
+                                RequestOptions.create().setHeader("Content-Type", "application/json")
+                                    .setData("{\"objectId\":\"" + cId + "\",\"parentId\":\"" + nodeId + "\",\"parentType\":\"reqSpeFolder\"}"));
+                            Thread.sleep(200);
+                            count++; progress = count;
+                            log("[CLEANUP] " + count + "/" + total + " 子文件夹 " + cTitle);
+                        } else if ("reqSpe".equals(cType)) {
+                            api.post(apiBase + "/erm/del/delReqSpe",
+                                RequestOptions.create().setHeader("Content-Type", "application/json")
+                                    .setData("{\"objectId\":\"" + cId + "\",\"parentId\":\"" + nodeId + "\",\"parentType\":\"reqSpeFolder\"}"));
+                            Thread.sleep(300);
+                            api.post(apiBase + "/erm/clean/cleanReqSpe",
+                                RequestOptions.create().setHeader("Content-Type", "application/json")
+                                    .setData("{\"objectId\":\"" + cId + "\",\"parentId\":\"" + nodeId + "\",\"parentType\":\"reqSpeFolder\"}"));
+                            Thread.sleep(200);
+                            count++; progress = count;
+                            log("[CLEANUP] " + count + "/" + total + " 需求规格 " + cTitle);
+                        }
+                    }
+                }
 
-                count++; progress = count;
-                if (count % 5 == 0) log("已清理 " + count + "/" + nodes.size());
+                if ("reqSpeFolder".equals(nodeType)) {
+                    api.post(apiBase + "/erm/del/delReqSpeFolder",
+                        RequestOptions.create().setHeader("Content-Type", "application/json")
+                            .setData("{\"objectId\":\"" + nodeId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}"));
+                    Thread.sleep(300);
+                    api.post(apiBase + "/erm/clean/cleanReqSpeFolder",
+                        RequestOptions.create().setHeader("Content-Type", "application/json")
+                            .setData("{\"objectId\":\"" + nodeId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}"));
+                    Thread.sleep(200);
+                    count++; progress = count;
+                    log("[CLEANUP] " + count + "/" + total + " 文件夹 " + nodeTitle);
+                } else if ("reqSpe".equals(nodeType)) {
+                    api.post(apiBase + "/erm/del/delReqSpe",
+                        RequestOptions.create().setHeader("Content-Type", "application/json")
+                            .setData("{\"objectId\":\"" + nodeId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}"));
+                    Thread.sleep(300);
+                    api.post(apiBase + "/erm/clean/cleanReqSpe",
+                        RequestOptions.create().setHeader("Content-Type", "application/json")
+                            .setData("{\"objectId\":\"" + nodeId + "\",\"parentId\":\"" + projectId + "\",\"parentType\":\"project\"}"));
+                    Thread.sleep(200);
+                    count++; progress = count;
+                    log("[CLEANUP] " + count + "/" + total + " 需求规格 " + nodeTitle);
+                }
             }
+
             durMs = System.currentTimeMillis() - t0;
             status = "SUCCESS"; msg = "清理完成，共 " + count + " 个节点";
             log("====== 清理完成！共 " + count + " 个节点 ======");
@@ -203,25 +374,18 @@ public class TestExecutionService {
             durMs = System.currentTimeMillis() - t0;
             status = "FAILED"; msg = e.getMessage();
             log("ERROR: " + e.getMessage());
+        } finally {
+            if (playwright != null) { try { playwright.close(); } catch (Exception ignored) {} }
         }
     }
 
-    private void sendCleanup(String url, String cookie, String body) throws Exception {
-        HC.send(HttpRequest.newBuilder().uri(URI.create(url)).timeout(java.time.Duration.ofSeconds(30))
-            .header("Content-Type", "application/json").header("Cookie", cookie)
-            .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
-    }
-
-    private void collectCleanupNodes(JsonArray items, List<String[]> nodes) {
-        for (JsonElement el : items) {
-            JsonObject node = el.getAsJsonObject();
-            String type = node.has("type") ? node.get("type").getAsString() : "";
-            String id = node.has("objectId") ? node.get("objectId").getAsString() : "";
-            String pid = node.has("parentId") ? node.get("parentId").getAsString() : "";
-            if (node.has("children") && !node.get("children").isJsonNull())
-                collectCleanupNodes(node.getAsJsonArray("children"), nodes);
-            if (!id.isBlank() && !"project".equals(type))
-                nodes.add(new String[]{type, id, pid});
+    private void countChildren(JsonObject node, List<JsonObject> acc) {
+        if (node.has("children") && !node.get("children").isJsonNull()) {
+            for (JsonElement c : node.getAsJsonArray("children")) {
+                JsonObject child = c.getAsJsonObject();
+                acc.add(child);
+                countChildren(child, acc);
+            }
         }
     }
 
