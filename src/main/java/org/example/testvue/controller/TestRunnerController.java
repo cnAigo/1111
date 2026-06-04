@@ -7,7 +7,6 @@ import org.example.testvue.repository.TestConfigRepository;
 import org.example.testvue.entity.TestCaseDetail;
 import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
-import org.example.testvue.service.CleanupService;
 import org.example.testvue.service.SurefireParser;
 import org.example.testvue.service.TestExecutionService;
 import org.springframework.data.domain.PageRequest;
@@ -26,18 +25,14 @@ public class TestRunnerController {
     private final TestHistoryRepository historyRepo;
     private final TestConfigRepository configRepo;
     private final TestCaseDetailRepository caseDetailRepo;
-    private final CleanupService cleanupService;
-
     public TestRunnerController(TestExecutionService execService,
                                 TestHistoryRepository historyRepo,
                                 TestConfigRepository configRepo,
-                                TestCaseDetailRepository caseDetailRepo,
-                                CleanupService cleanupService) {
+                                TestCaseDetailRepository caseDetailRepo) {
         this.execService = execService;
         this.historyRepo = historyRepo;
         this.configRepo = configRepo;
         this.caseDetailRepo = caseDetailRepo;
-        this.cleanupService = cleanupService;
     }
 
     // ── Run ──

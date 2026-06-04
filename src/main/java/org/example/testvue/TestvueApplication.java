@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableAsync
 public class TestvueApplication {
     public static void main(String[] args) {
+        System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
         SpringApplication.run(TestvueApplication.class, args);
     }
 }
