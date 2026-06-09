@@ -2,11 +2,13 @@ package org.example.testvue.service;
 
 import org.example.testvue.dto.Dtos.*;
 import org.example.testvue.entity.TestConfigEntity;
+import org.example.testvue.entity.TestHistory;
 import org.example.testvue.repository.TestConfigRepository;
 import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -14,7 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Orchestrates test execution and environment cleanup.
- * Delegates heavy lifting to {@link MavenTestRunner} and {@link CleanupService}.
+ * All state is persisted to DB via TestHistory — no volatile fields, no memory-backed log buffer.
+ * Threads are managed by the configured ThreadPoolTaskExecutor, not raw new Thread().
  */
 @Service
 public class TestExecutionService {
@@ -24,112 +27,162 @@ public class TestExecutionService {
     private final TestHistoryRepository historyRepo;
     private final TestCaseDetailRepository caseDetailRepo;
     private final TestConfigRepository configRepo;
+    private final MavenTestRunner mavenRunner;
     private final CleanupService cleanupService;
 
-    private volatile String status = "IDLE";
-    private volatile String msg = "";
-    private volatile String label = "";
-    private volatile long durMs = 0;
-    private volatile int progress = 0;
-    private volatile int progressTotal = 0;
-    private volatile String currentTaskId;
-    private final StringBuilder logBuf = new StringBuilder();
+    /** Shared stop flag for the currently running task */
     private final AtomicBoolean stopFlag = new AtomicBoolean(false);
-
-    // Lazy-created — needs the shared stopFlag and logBuf
-    private MavenTestRunner mavenRunner;
 
     public TestExecutionService(TestHistoryRepository historyRepo,
                                 TestCaseDetailRepository caseDetailRepo,
                                 TestConfigRepository configRepo,
+                                MavenTestRunner mavenRunner,
                                 CleanupService cleanupService) {
         this.historyRepo = historyRepo;
         this.caseDetailRepo = caseDetailRepo;
         this.configRepo = configRepo;
+        this.mavenRunner = mavenRunner;
         this.cleanupService = cleanupService;
+    }
+
+    // ── Status helpers (read from DB) ──
+
+    private TestHistory getCurrent() {
+        return historyRepo.findTopByOrderByCreateTimeDesc();
+    }
+
+    public boolean isRunning() {
+        TestHistory h = historyRepo.findByTaskId(getCurrentTaskId());
+        return h != null && "RUNNING".equals(h.getStatus());
+    }
+
+    private String getCurrentTaskId() {
+        TestHistory h = getCurrent();
+        return h != null ? h.getTaskId() : null;
+    }
+
+    // ── Get current status (reads from DB + disk log) ──
+
+    public StatusResponse getCurrentStatus() {
+        StatusResponse s = new StatusResponse();
+        TestHistory h = getCurrent();
+        if (h != null) {
+            s.status = h.getStatus() != null ? h.getStatus() : "IDLE";
+            s.msg = h.getErrorMessage() != null ? h.getErrorMessage() : "";
+            s.label = h.getLabel() != null ? h.getLabel() : "";
+            s.durationMs = h.getDurationMs();
+            s.durationFmt = h.getDurationFmt() != null ? h.getDurationFmt() : "";
+            s.progress = h.getProgress();
+            s.progressTotal = h.getProgressTotal();
+            s.errorMessage = h.getErrorMessage() != null ? h.getErrorMessage() : "";
+            s.taskId = h.getTaskId();
+            // Read log from disk file (not from memory buffer)
+            s.output = MavenTestRunner.readLog(h.getTaskId());
+        } else {
+            s.status = "IDLE"; s.label = ""; s.durationFmt = "";
+        }
+        return s;
     }
 
     // ── Run ──
 
     public synchronized String startRun(TestRunRequest req) {
-        if ("RUNNING".equals(status)) return null;
+        if (isRunning()) return null;
         stopFlag.set(false);
+
         String tid = UUID.randomUUID().toString();
         String lb = resolveLabel(req);
 
-        status = "RUNNING"; msg = ""; label = lb; durMs = 0;
-        progress = 0; currentTaskId = tid;
-        synchronized (logBuf) { logBuf.setLength(0); }
+        int total = mavenRunner.countTestCases(req);
+        if (total <= 0) total = 1;
 
-        if (mavenRunner == null)
-            mavenRunner = new MavenTestRunner(historyRepo, caseDetailRepo, stopFlag, logBuf);
+        // Persist initial record immediately
+        TestHistory h = TestHistory.of(tid, lb, "RUNNING", "", 0, 0, 0, "", "");
+        h.setProgress(0);
+        h.setProgressTotal(total);
+        historyRepo.save(h);
 
-        progressTotal = mavenRunner.countTestCases(req);
-        if (progressTotal <= 0) progressTotal = 1;
-
-        new Thread(() -> mavenRunner.run(tid, req, lb, new MavenTestRunner.StatusUpdater() {
-            public void updateProgress(int p) { progress = p; }
-            public void stopped() { status = "STOPPED"; }
-            public void finished(String s, String m, long d, int total) {
-                status = s; msg = m; durMs = d; progress = total; progressTotal = total;
-            }
-            public void failed(String s, String m, long d) {
-                status = s; msg = m; durMs = d;
-            }
-        })).start();
+        // Execute asynchronously via thread pool
+        executeRunAsync(tid, req, lb);
         return tid;
+    }
+
+    @Async("testExecutor")
+    public void executeRunAsync(String tid, TestRunRequest req, String label) {
+        try {
+            mavenRunner.run(tid, req, label, stopFlag);
+        } catch (Exception e) {
+            LOG.error("Test execution failed", e);
+            TestHistory h = historyRepo.findByTaskId(tid);
+            if (h != null) {
+                h.setStatus("FAILED");
+                h.setErrorMessage(e.getMessage());
+                h.setOutput(e.getMessage());
+                historyRepo.save(h);
+            }
+        }
     }
 
     public void stopRun() {
         stopFlag.set(true);
-        if (mavenRunner != null) mavenRunner.kill();
+        mavenRunner.kill();
         cleanupService.stop();
-        status = "IDLE"; msg = "手动停止";
-    }
 
-    public StatusResponse getCurrentStatus() {
-        StatusResponse s = new StatusResponse();
-        s.status = status; s.msg = msg; s.label = label;
-        s.durationMs = durMs; s.durationFmt = MavenTestRunner.fmt(durMs);
-        s.progress = progress; s.progressTotal = progressTotal;
-        s.errorMessage = msg; s.taskId = currentTaskId;
-        synchronized (logBuf) { s.output = logBuf.toString(); }
-        return s;
+        // Update DB
+        TestHistory h = historyRepo.findByTaskId(getCurrentTaskId());
+        if (h != null && "RUNNING".equals(h.getStatus())) {
+            h.setStatus("IDLE");
+            h.setErrorMessage("手动停止");
+            historyRepo.save(h);
+        }
     }
-
-    public boolean isRunning() { return "RUNNING".equals(status); }
 
     // ── Cleanup ──
 
     public synchronized void startCleanup(String projectId, String url,
                                            String username, String password) {
-        if ("RUNNING".equals(status)) return;
+        if (isRunning()) return;
         stopFlag.set(false);
-        status = "RUNNING"; msg = ""; label = "清理环境";
-        durMs = 0; progress = 0; progressTotal = 0;
-        synchronized (logBuf) { logBuf.setLength(0); }
-        currentTaskId = "cleanup";
 
         String pId = resolveProjectId(projectId);
         String base = (url != null && !url.isBlank()) ? url : "https://192.168.6.171:8088";
         String user = (username != null && !username.isBlank()) ? username : "admin";
         String pass = (password != null && !password.isBlank()) ? password : "Aa123456";
 
-        cleanupService.startCleanup(base, user, pass, pId);
-        new Thread(() -> pollCleanup()).start();
+        String tid = "cleanup-" + System.currentTimeMillis();
+        TestHistory h = TestHistory.of(tid, "清理环境", "RUNNING", "", 0, 0, 0, "", "");
+        h.setProgress(0); h.setProgressTotal(0);
+        historyRepo.save(h);
+
+        runCleanupAsync(base, user, pass, pId, tid);
     }
 
-    private void pollCleanup() {
+    @Async("testExecutor")
+    public void runCleanupAsync(String base, String user, String pass, String projectId, String tid) {
+        cleanupService.startCleanup(base, user, pass, projectId);
+
+        // Poll until done
         while (cleanupService.isRunning()) {
             try { Thread.sleep(500); } catch (InterruptedException e) { break; }
             if (stopFlag.get()) { cleanupService.stop(); break; }
+            // Update DB progress
+            TestHistory h = historyRepo.findByTaskId(tid);
+            if (h != null) {
+                h.setProgress(cleanupService.getProgress());
+                h.setProgressTotal(cleanupService.getProgressTotal());
+                historyRepo.save(h);
+            }
         }
-        status = cleanupService.getStatus();
-        msg = cleanupService.getMsg();
-        progress = cleanupService.getProgress();
-        progressTotal = cleanupService.getProgressTotal();
-        durMs = 0;
-        synchronized (logBuf) { logBuf.setLength(0); logBuf.append(cleanupService.getLog()); }
+
+        TestHistory h = historyRepo.findByTaskId(tid);
+        if (h != null) {
+            h.setStatus(cleanupService.getStatus());
+            h.setErrorMessage(cleanupService.getMsg());
+            h.setOutput(cleanupService.getLog());
+            h.setProgress(cleanupService.getProgress());
+            h.setProgressTotal(cleanupService.getProgressTotal());
+            historyRepo.save(h);
+        }
     }
 
     // ── Private helpers ──

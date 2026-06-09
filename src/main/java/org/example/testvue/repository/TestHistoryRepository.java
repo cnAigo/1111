@@ -7,6 +7,7 @@ import java.util.List;
 
 public interface TestHistoryRepository extends JpaRepository<TestHistory, Long> {
     List<TestHistory> findAllByOrderByCreateTimeDesc(Pageable pageable);
+    TestHistory findTopByOrderByCreateTimeDesc();
     TestHistory findByTaskId(String taskId);
     void deleteByTaskId(String taskId);
 }

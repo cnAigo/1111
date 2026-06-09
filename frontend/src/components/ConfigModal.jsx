@@ -16,9 +16,9 @@ export default function ConfigModal({ open, onClose, cfgUrl, setCfgUrl, cfgProje
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">已保存的配置</label>
               {savedConfigs.map(sc => (
-                <div key={sc.id} onClick={() => { setCfgUrl(sc.url||''); setCfgProjectId(sc.projectId||''); setCfgUsername(sc.username||''); setCfgPassword(''); }}
+                <div key={sc.id} onClick={() => { setCfgUrl(sc.url||''); setCfgProjectId(sc.projectId||''); setCfgUsername(sc.username||''); setCfgPassword(sc.password || ''); }}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 hover:bg-blue-50/50 text-sm">
-                  <span className="font-medium text-slate-700">{sc.configName}</span><span className="text-slate-400 text-xs">{sc.url}</span><span className="text-[10px] text-amber-500 ml-auto">密码需重新输入</span>
+                  <span className="font-medium text-slate-700">{sc.configName}</span><span className="text-slate-400 text-xs">{sc.url}</span>
                   <button onClick={e => { e.stopPropagation(); onDelete(sc.id); }} className="ml-auto p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 size={12} /></button>
                 </div>
               ))}
@@ -33,7 +33,7 @@ export default function ConfigModal({ open, onClose, cfgUrl, setCfgUrl, cfgProje
           <div><label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">Project ID</label><input value={cfgProjectId} onChange={e => setCfgProjectId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">Username</label><input value={cfgUsername} onChange={e => setCfgUsername(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none" /></div>
-            <div><label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">Password</label><div className="relative"><input type={pwVisible?'text':'password'} value={cfgPassword} onChange={e => setCfgPassword(e.target.value)} placeholder={cfgPassword ? '' : '密码已脱敏，请重新输入'} className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none placeholder:text-amber-400 placeholder:text-[11px]" /><button onClick={() => setPwVisible(!pwVisible)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">{pwVisible?<EyeOff size={14}/>:<Eye size={14}/>}</button></div></div>
+            <div><label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide block mb-1">Password</label><div className="relative"><input type={pwVisible?'text':'password'} value={cfgPassword} onChange={e => setCfgPassword(e.target.value)} onFocus={() => { if (cfgPassword === '********') setCfgPassword(''); }} placeholder={cfgPassword ? '' : '输入密码'} className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none placeholder:text-slate-400 placeholder:text-[11px]" /><button onClick={() => setPwVisible(!pwVisible)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600">{pwVisible?<EyeOff size={14}/>:<Eye size={14}/>}</button></div></div>
           </div>
         </div>
         <div className="px-6 py-4 border-t flex justify-end"><button onClick={onClose} className="px-5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">完成</button></div>

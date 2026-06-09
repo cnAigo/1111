@@ -9,6 +9,7 @@ import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
 import org.example.testvue.service.SurefireParser;
 import org.example.testvue.service.TestExecutionService;
+import org.example.testvue.util.AESUtils;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -25,14 +26,18 @@ public class TestRunnerController {
     private final TestHistoryRepository historyRepo;
     private final TestConfigRepository configRepo;
     private final TestCaseDetailRepository caseDetailRepo;
+    private final AESUtils aes;
+
     public TestRunnerController(TestExecutionService execService,
                                 TestHistoryRepository historyRepo,
                                 TestConfigRepository configRepo,
-                                TestCaseDetailRepository caseDetailRepo) {
+                                TestCaseDetailRepository caseDetailRepo,
+                                AESUtils aes) {
         this.execService = execService;
         this.historyRepo = historyRepo;
         this.configRepo = configRepo;
         this.caseDetailRepo = caseDetailRepo;
+        this.aes = aes;
     }
 
     // ── Run ──
@@ -201,6 +206,8 @@ public class TestRunnerController {
             item.id = c.getId(); item.configName = c.getConfigName();
             item.url = c.getUrl(); item.projectId = c.getProjectId();
             item.username = c.getUsername();
+            // Return masked password — never expose ciphertext or plaintext to frontend
+            item.password = AESUtils.mask(c.getPassword());
             list.add(item);
         }
         return list;
@@ -209,8 +216,15 @@ public class TestRunnerController {
     @Transactional
     @PostMapping("/configs")
     public Map<String, Object> saveConfig(@RequestBody ConfigSaveRequest body) {
+        String password = body.password;
+        // If frontend sends masked placeholder, keep empty (= no password update)
+        if (password != null && password.equals(AESUtils.mask(null))) {
+            password = ""; // treat as "no change" — encrypting empty yields empty
+        }
+        String encryptedPassword = password != null && !password.isEmpty()
+            ? aes.encrypt(password) : "";
         TestConfigEntity c = new TestConfigEntity(
-            body.configName, body.url, body.projectId, body.username, body.password);
+            body.configName, body.url, body.projectId, body.username, encryptedPassword);
         c = configRepo.save(c);
         return Map.of("code", 200, "msg", "ok", "id", c.getId());
     }

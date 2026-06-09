@@ -103,6 +103,7 @@ public class Dtos {
         public String url;
         public String projectId;
         public String username;
+        public String password;
     }
 
     public static class TestCaseResult {
