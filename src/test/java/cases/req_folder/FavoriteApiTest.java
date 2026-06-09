@@ -26,7 +26,7 @@ public class FavoriteApiTest extends ApiTestHelper {
                     "应返回收藏ID");
             log.info("QTYL_SC_001 通过: 收藏文件夹 folderId={}", folderId);
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -47,7 +47,7 @@ public class FavoriteApiTest extends ApiTestHelper {
                     "应返回收藏ID");
             log.info("QTYL_SC_002 通过: 收藏需求规格 docId={}", docId);
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -69,7 +69,7 @@ public class FavoriteApiTest extends ApiTestHelper {
             log.info("QTYL_SC_003 通过: 收藏列表dataSize={}",
                     root.getAsJsonArray("data").size());
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -92,7 +92,7 @@ public class FavoriteApiTest extends ApiTestHelper {
                     "删除收藏应成功, resp: " + resp);
             log.info("QTYL_SC_004 通过: 删除收藏 favoriteId={}", favoriteId);
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -143,7 +143,7 @@ public class FavoriteApiTest extends ApiTestHelper {
 
             log.info("QTYL_SC_005 通过: 完整流程 favoriteId={}", favoriteId);
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -181,7 +181,7 @@ public class FavoriteApiTest extends ApiTestHelper {
             log.info("QTYL_SC_008: 空type code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -212,7 +212,7 @@ public class FavoriteApiTest extends ApiTestHelper {
             log.info("QTYL_SC_010: 重复收藏 code={}, msg={}",
                     code2, root2.has("msg") ? root2.get("msg").getAsString() : "");
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 
@@ -266,7 +266,7 @@ public class FavoriteApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("QTYL_SC_014 通过: 获取打开模式 docId={}", docId);
         } finally {
-            hardCleanFolder(folderId);
+            forceCleanFolder(folderId);
         }
     }
 

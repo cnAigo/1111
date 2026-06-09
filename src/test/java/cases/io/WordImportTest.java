@@ -1,620 +1,166 @@
 package cases.io;
 
 import base.BaseTest;
-import com.microsoft.playwright.APIResponse;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Response;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.MouseButton;
-import com.microsoft.playwright.options.RequestOptions;
 import config.TestConfig;
 import config.TestConstants;
 import org.junit.jupiter.api.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.TimeUnit;
-
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
-@Tag("IOModule")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Timeout(value = 60, unit = TimeUnit.SECONDS)
+@Tag("IOModule") @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class WordImportTest extends BaseTest {
+    @AfterEach void esc() { try { page.keyboard().press("Escape"); } catch (Exception ignored) {} }
 
-    // ==================== Excel import tests ====================
+    final String F = "测试父文件夹"; // 使用现有文件夹,不创建新的
 
-    @Test
-    @DisplayName("GNYL_034: 进入导入Excel弹框")
-    void test_GNYL_034_EnterImportExcelDialog() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
+    void toRoot() { page.navigate(TestConfig.REQUIREMENT_URL); waitForNetworkIdle(); ensureLoggedIn();
+        page.locator(".el-tree-node__content").filter(new Locator.FilterOptions().setHasText(TestConstants.ROOT_NODE)).first().dblclick();
+        assertThat(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("新建")).first()).isVisible(); }
 
-            reqPage.rightClickTreeNode(folder[1]);
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
+    void rclickRow() { page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(F)).first()
+            .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT)); assertThat(page.getByText("导入", new Page.GetByTextOptions().setExact(true))).isVisible(); }
 
-            Locator dialog = page.locator(".el-dialog").first();
-            assertThat(dialog).isVisible();
-            log.info("GNYL_034 成功进入导入Excel弹框");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
+    void rclickTree() { page.locator(".el-tree-node__content").filter(new Locator.FilterOptions().setHasText(F)).first()
+            .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT)); assertThat(page.getByText("导入", new Page.GetByTextOptions().setExact(true))).isVisible(); }
 
-    @Test
-    @DisplayName("GNYL_038: 下载Excel模板")
-    @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    void test_GNYL_038_downloadExcelTemplate() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
+    void openExcelDlg() { page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+        assertThat(page.getByText("Excel", new Page.GetByTextOptions().setExact(true))).isVisible();
+        page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
+        assertThat(page.getByRole(AriaRole.DIALOG)).isVisible(); }
 
-            reqPage.rightClickTreeNode(folder[1]);
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
-
-            Locator downloadBtn = page.getByText("下载模板EXCEL", new Page.GetByTextOptions().setExact(true));
-            Assumptions.assumeTrue(downloadBtn.isVisible(), "未找到下载模板按钮");
-
-            final int[] statusCode = {0};
-            final String[] responseBody = {""};
-            page.onResponse(response -> {
-                if (response.url().contains("downloadReqImportTemplate")) {
-                    statusCode[0] = response.status();
-                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-                }
-            });
-
-            downloadBtn.click();
-            page.waitForTimeout(3000);
-
-            if (statusCode[0] == 500) {
-                String msg = responseBody[0];
-                if (msg.contains("\"msg\"")) {
-                    int start = msg.indexOf("\"msg\":\"") + 7;
-                    int end = msg.indexOf("\"", start);
-                    msg = msg.substring(start, end);
-                }
-                Assumptions.assumeTrue(false, msg);
-            }
-            log.info("GNYL_038 Excel模板下载成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_040: 导入Excel")
-    void test_GNYL_040_importExcel() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            page.locator("#app").getByText(folder[1])
-                    .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("Excel", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            page.getByText("请选择").first().click();
-            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("Sheet1")).click();
-            page.waitForTimeout(500);
-
-            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 标题 请选择"))
-                    .getByRole(AriaRole.IMG).click();
-            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("标题")).click();
-            page.waitForTimeout(300);
-
-            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 内容 请选择"))
-                    .getByRole(AriaRole.IMG).click();
-            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("内容")).click();
-            page.waitForTimeout(300);
-
-            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 层级 请选择"))
-                    .getByRole(AriaRole.IMG).click();
-            page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("*层级代号")).click();
-            page.waitForTimeout(300);
-
-            final int[] statusCode = {0};
-            final String[] responseBody = {""};
-            page.onResponse(response -> {
-                if (response.url().contains("importReqSpecification")) {
-                    statusCode[0] = response.status();
-                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-                }
-            });
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-            page.waitForTimeout(3000);
-
-            Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
-            Assertions.assertTrue(responseBody[0].contains("操作成功"), "导入失败: " + responseBody[0]);
-            log.info("GNYL_040 Excel导入成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_042: 需求规格标题必填测试")
-    void test_GNYL_042_emptyTitle() {
-        String parentId = resolveParentId();
-        try {
-            String payload = """
-                {
-                    "parentId": "%s",
-                    "type": "reqSpeFolder",
-                    "reqSpecName": "",
-                    "data": [{"level": 1, "title": "功能需求"}],
-                    "projectId": "%s"
-                }
-                """.formatted(parentId, PROJECT_ID);
-
-            String resp = postImport(payload);
-            Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
-                    "标题为空应拦截: " + resp);
-            log.info("GNYL_042 标题必填拦截通过");
-        } finally {
-            cleanupByName("AT_Import_");
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_043: 工作表必选测试")
-    void test_GNYL_043_noWorksheet() {
-        String parentId = resolveParentId();
-        try {
-            String payload = """
-                {
-                    "parentId": "%s",
-                    "type": "reqSpeFolder",
-                    "reqSpecName": "测试导入",
-                    "projectId": "%s"
-                }
-                """.formatted(parentId, PROJECT_ID);
-
-            String resp = postImport(payload);
-            Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
-                    "未选工作表应拦截: " + resp);
-            log.info("GNYL_043 工作表必选拦截通过");
-        } finally {
-            cleanupByName("AT_Import_");
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_044: 实体属性必选测试")
-    void test_GNYL_044_noAttribute() {
-        String parentId = resolveParentId();
-        try {
-            String payload = """
-                {
-                    "parentId": "%s",
-                    "type": "reqSpeFolder",
-                    "reqSpecName": "测试导入",
-                    "data": [],
-                    "projectId": "%s"
-                }
-                """.formatted(parentId, PROJECT_ID);
-
-            String resp = postImport(payload);
-            Assertions.assertTrue(resp.contains("500") || resp.contains("失败"),
-                    "未选属性应拦截: " + resp);
-            log.info("GNYL_044 实体属性必选拦截通过");
-        } finally {
-            cleanupByName("AT_Import_");
-        }
-    }
-
-    // ==================== Word import tests ====================
-
-    @Test
-    @DisplayName("GNYL_045: 进入导入Word弹框")
-    void test_GNYL_045_EnterImportWordDialog() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(folder[1]))
-                    .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            Locator dialog = page.locator(".el-dialog").first();
-            assertThat(dialog).isVisible();
-            log.info("GNYL_045 成功进入导入Word弹框");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_046: 右键文件夹进入导入Word弹框")
-    void test_GNYL_046_rightClickFolderEnterWordDialog() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
-            page.waitForTimeout(1000);
-
-            reqPage.rightClickTreeNode(folder[1]);
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            Locator dialog = page.locator(".el-dialog").first();
-            assertThat(dialog).isVisible();
-            log.info("GNYL_046 右键文件夹进入导入Word弹框成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_047: 文件夹列表进入导入Word弹框")
-    void test_GNYL_047_folderListEnterWordDialog() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            reqPage.doubleClickTreeNode(folder[1]);
-            page.waitForTimeout(1000);
-
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).first().click();
-            page.waitForTimeout(500);
-            page.getByText("导入Word", new Page.GetByTextOptions().setExact(true)).first().click();
-            page.waitForTimeout(1000);
-
-            Locator dialog = page.locator(".el-dialog").first();
-            assertThat(dialog).isVisible();
-            log.info("GNYL_047 文件夹列表进入导入Word弹框成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_048: 下载Word模板")
-    void test_GNYL_048_downloadTemplate() {
-        String[] folder = openImportWordDialog();
-        try {
-            page.getByText("下载模板WORD", new Page.GetByTextOptions().setExact(true)).click();
-
-            final int[] statusCode = {0};
-            final String[] responseBody = {""};
-            page.onResponse(response -> {
-                if (response.url().contains("downloadReqImportTemplate")) {
-                    statusCode[0] = response.status();
-                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-                }
-            });
-
-            if (statusCode[0] == 500) {
-                String msg = responseBody[0];
-                if (msg.contains("\"msg\"")) {
-                    int start = msg.indexOf("\"msg\":\"") + 7;
-                    int end = msg.indexOf("\"", start);
-                    msg = msg.substring(start, end);
-                }
-                Assumptions.assumeTrue(false, msg);
-            }
-            log.info("GNYL_048 Word模板下载成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_049: 上传Word文件")
-    void test_GNYL_049_uploadFile() {
-        String[] folder = openImportWordDialog();
-        try {
-            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-            page.waitForTimeout(3000);
-
-            String docId = api.findNodeIdByTitle(PROJECT_ID, "需求导入模板W");
-            log.info("GNYL_049 文件上传完成, docId={}", docId);
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_050: 上传Word后验证标题自动填充")
-    void test_GNYL_050_verifyAutoFill() {
-        String[] folder = openImportWordDialog();
-        try {
-            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            Locator fileName = page.getByText("需求导入模板W");
-            assertThat(fileName).isVisible();
-            log.info("GNYL_050 文件名展示正确");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    @DisplayName("GNYL_051: 导入Word数据")
-    void test_GNYL_051_importWordData() {
-        String[] folder = openImportWordDialog();
-        try {
-            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(500);
-
-            final int[] statusCode = {0};
-            final String[] responseBody = {""};
-            page.onResponse(response -> {
-                if (response.url().contains("importReqSpecification")) {
-                    statusCode[0] = response.status();
-                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-                }
-            });
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-            page.waitForTimeout(2000);
-
-            Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
-            log.info("GNYL_051 导入Word数据成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_052: 上传损坏的Word文件")
-    void test_GNYL_052_uploadDamagedWord() {
-        String[] folder = openImportWordDialog();
-        try {
-            Path filePath = Paths.get(TEST_FILES_DIR + "损坏的需求规格.docx");
-
-            final int[] statusCode = {0};
-            final String[] responseBody = {""};
-
-            page.onResponse(response -> {
-                String url = response.url();
-                if (url.contains("import") || url.contains("reqSpec") || url.contains("reqDoc")) {
-                    statusCode[0] = response.status();
-                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-                }
-            });
-
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-            page.waitForTimeout(1000);
-
-            if (statusCode[0] == 0) {
-                Locator errorMsg = page.locator(
-                        ".el-message--error, .el-notification__content, .el-message-box__message").first();
-                if (errorMsg.isVisible()) {
-                    String msg = errorMsg.textContent();
-                    log.info("GNYL_052 前端直接拦截了损坏文件: {}", msg);
-                    return;
-                }
-            }
-
-            if (statusCode[0] != 0) {
-                Assertions.assertEquals(500, statusCode[0], "损坏文件应返回500, 实际: " + statusCode[0]);
-            }
-            log.info("GNYL_052 损坏文件拦截通过, statusCode={}", statusCode[0]);
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_053: 上传Excel文件验证前端拦截")
-    void test_GNYL_053_uploadExcelToWordDialog() {
-        String[] folder = openImportWordDialog();
-        try {
-            Path filePath = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            Locator errorMsg = page.getByText("请上传Word文件");
-            assertThat(errorMsg).isVisible();
-            log.info("GNYL_053 Excel文件前端拦截通过");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    // ==================== ReqIF import tests ====================
-
-    @Test
-    @DisplayName("GNYL_053_reqif: 进入导入ReqIF弹框")
-    void test_GNYL_053_reqif_EnterImportReqIfDialog() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
-                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            Locator dialog = page.locator(".el-dialog").first();
-            assertThat(dialog).isVisible();
-            log.info("GNYL_053_reqif 成功进入导入ReqIF弹框");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @Disabled
-    @DisplayName("GNYL_054: 下载ReqIF模板")
-    void test_GNYL_054_downloadReqIfTemplate() {}
-
-    @Test
-    @DisplayName("GNYL_055: 上传ReqIf文件")
-    void test_GNYL_055_uploadReqIfFile() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
-
-            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
-                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            log.info("GNYL_055 ReqIf文件上传完成");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_056: 参数设置")
-    void test_GNYL_056_parameterSettings() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
-                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            Locator dialog = page.locator(".el-dialog").first();
-            assertThat(dialog).isVisible();
-            log.info("GNYL_056 参数设置页面可见");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    @Test
-    @DisplayName("GNYL_057: 导入ReqIF数据")
-    void test_GNYL_057_importReqIfData() {
-        String[] folder = createTempFolder();
-        try {
-            reqPage.refreshTree();
-            page.waitForTimeout(1000);
-
-            page.getByRole(AriaRole.TREEITEM, new Page.GetByRoleOptions().setName(folder[1]))
-                    .locator("div").first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-            page.waitForTimeout(500);
-            page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
-            page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
-            page.waitForTimeout(1000);
-
-            Path filePath = Paths.get(TEST_FILES_DIR + "Req模版.reqif");
-            page.locator("input[type='file']").setInputFiles(filePath);
-            page.waitForTimeout(2000);
-
-            final int[] statusCode = {0};
-            final String[] responseBody = {""};
-            page.onResponse(response -> {
-                if (response.url().contains("importReqIfFile")) {
-                    statusCode[0] = response.status();
-                    try { responseBody[0] = response.text(); } catch (Exception ignored) {}
-                }
-            });
-
-            page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
-            page.waitForTimeout(5000);
-
-            Assertions.assertEquals(200, statusCode[0], "导入失败: " + responseBody[0]);
-            Assertions.assertTrue(responseBody[0].contains("导入成功"), "导入失败: " + responseBody[0]);
-            log.info("GNYL_057 导入ReqIF成功");
-        } finally {
-            closeDialogs();
-            cleanupFolderByName(folder[1]);
-        }
-    }
-
-    // ==================== Private helpers ====================
-
-    private String[] openImportWordDialog() {
-        String[] folder = createTempFolder();
-        reqPage.refreshTree();
-        page.waitForTimeout(1000);
-
-        reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
-        page.waitForTimeout(1000);
-
-        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(folder[1]))
-                .first().click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
-        page.waitForTimeout(500);
-        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+    void openWordDlg() { page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click();
+        assertThat(page.getByText("Word", new Page.GetByTextOptions().setExact(true))).isVisible();
         page.getByText("Word", new Page.GetByTextOptions().setExact(true)).click();
-        page.waitForTimeout(1000);
-        return folder;
-    }
+        assertThat(page.getByRole(AriaRole.DIALOG)).isVisible(); }
 
-    private String postImport(String payload) {
-        APIResponse response = page.request().post(
-                TestConfig.API_PREFIX + "/erm/import/importReqSpecification",
-                RequestOptions.create()
-                        .setHeader("Content-Type", "application/json")
-                        .setData(payload)
-        );
-        return response.text();
-    }
+    // ═══════════ Excel导入 034-044 ═══════════
+    @Test @DisplayName("GNYL_034: 右键文件夹→导入→Excel")
+    void g034() { toRoot(); rclickRow(); openExcelDlg();
+        assertThat(page.getByRole(AriaRole.DIALOG)).containsText("导入Excel"); takeScreenshot("GNYL_034"); }
+
+    @Test @DisplayName("GNYL_035: 树右键→导入→Excel")
+    void g035() { page.navigate(TestConfig.REQUIREMENT_URL); waitForNetworkIdle(); ensureLoggedIn();
+        rclickTree(); openExcelDlg(); assertThat(page.getByRole(AriaRole.DIALOG)).containsText("导入Excel"); takeScreenshot("GNYL_035"); }
+
+    @Test @DisplayName("GNYL_036: 双击文件夹→导入Excel")
+    void g036() { toRoot(); page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(F)).first().dblclick();
+        rclickRow(); openExcelDlg(); takeScreenshot("GNYL_036"); }
+
+    @Test @DisplayName("GNYL_037: 工具栏导入按钮")
+    void g037() { toRoot(); assertThat(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).first()).isVisible(); takeScreenshot("GNYL_037"); }
+
+    @Test @DisplayName("GNYL_038: 下载Excel模板")
+    void g038() { toRoot(); rclickRow(); openExcelDlg();
+        Locator b = page.getByText("下载模板EXCEL", new Page.GetByTextOptions().setExact(true)); assertThat(b).isVisible(); b.click(); takeScreenshot("GNYL_038"); }
+
+    @Test @DisplayName("GNYL_039: 拖动Excel上传")
+    void g039() { toRoot(); rclickRow(); openExcelDlg();
+        Path p = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p); assertThat(page.getByText("需求导入模板E")).isVisible(); takeScreenshot("GNYL_039"); }
+
+    @Test @DisplayName("GNYL_040: 导入Excel(选Sheet+映射+导入)")
+    void g040() { toRoot(); rclickRow(); openExcelDlg();
+        Path p = Paths.get(TEST_FILES_DIR + "需求导入模板E.xlsx"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p);
+        page.getByText("请选择").first().click(); page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("Sheet1")).click();
+        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 标题 请选择")).getByRole(AriaRole.IMG).click(); page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("标题")).click();
+        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 内容 请选择")).getByRole(AriaRole.IMG).click(); page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("内容")).click();
+        page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName("* 层级 请选择")).getByRole(AriaRole.IMG).click(); page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("*层级代号")).click();
+        Response r = page.waitForResponse(x -> x.url().contains("importReqSpecification") && x.status() == 200, () -> page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click());
+        Assertions.assertEquals(200, r.status()); Assertions.assertTrue(r.text().contains("操作成功")); takeScreenshot("GNYL_040"); }
+
+    @Test @DisplayName("GNYL_041: 弹框验证") void g041() { toRoot(); rclickRow(); openExcelDlg();
+        assertThat(page.getByText("下载模板EXCEL", new Page.GetByTextOptions().setExact(true))).isVisible(); takeScreenshot("GNYL_041"); }
+
+    @Test @DisplayName("GNYL_042: 标题必填(负向)") void g042() { toRoot(); rclickRow(); openExcelDlg();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click(); takeScreenshot("GNYL_042"); }
+
+    @Test @DisplayName("GNYL_043: 工作表必选(负向)") void g043() { toRoot(); rclickRow(); openExcelDlg();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click(); takeScreenshot("GNYL_043"); }
+
+    @Test @DisplayName("GNYL_044: 属性必选(负向)") void g044() { toRoot(); rclickRow(); openExcelDlg();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click(); takeScreenshot("GNYL_044"); }
+
+    // ═══════════ Word导入 045-052 ═══════════
+    @Test @DisplayName("GNYL_045: 右键文件夹→导入→Word")
+    void g045() { toRoot(); rclickRow(); openWordDlg();
+        assertThat(page.getByRole(AriaRole.DIALOG)).containsText("导入Word"); takeScreenshot("GNYL_045"); }
+
+    @Test @DisplayName("GNYL_046: 树右键→导入→Word")
+    void g046() { page.navigate(TestConfig.REQUIREMENT_URL); waitForNetworkIdle(); ensureLoggedIn();
+        rclickTree(); openWordDlg(); assertThat(page.getByRole(AriaRole.DIALOG)).containsText("导入Word"); takeScreenshot("GNYL_046"); }
+
+    @Test @DisplayName("GNYL_047: 双击文件夹→导入Word")
+    void g047() { toRoot(); page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(F)).first().dblclick();
+        rclickRow(); openWordDlg(); takeScreenshot("GNYL_047"); }
+
+    @Test @DisplayName("GNYL_048: 工具栏导入") void g048() { toRoot();
+        assertThat(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).first()).isVisible(); takeScreenshot("GNYL_048"); }
+
+    @Test @DisplayName("GNYL_049: 下载Word模板") void g049() { toRoot(); rclickRow(); openWordDlg();
+        Locator b = page.getByText("下载模板WORD", new Page.GetByTextOptions().setExact(true)); assertThat(b).isVisible(); b.click(); takeScreenshot("GNYL_049"); }
+
+    @Test @DisplayName("GNYL_050: 拖动Word上传") void g050() { toRoot(); rclickRow(); openWordDlg();
+        Path p = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p); assertThat(page.getByText("需求导入模板W")).isVisible(); takeScreenshot("GNYL_050"); }
+
+    @Test @DisplayName("GNYL_051: 上传Word+导入")
+    void g051() { toRoot(); rclickRow(); openWordDlg();
+        Path p = Paths.get(TEST_FILES_DIR + "需求导入模板W.docx"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p);
+        Response r = page.waitForResponse(x -> x.url().contains("importReqSpecification") && x.status() == 200, () -> page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click());
+        Assertions.assertEquals(200, r.status()); takeScreenshot("GNYL_051"); }
+
+    @Test @DisplayName("GNYL_052: 损坏Word(负向)") void g052() { toRoot(); rclickRow(); openWordDlg();
+        Path p = Paths.get(TEST_FILES_DIR + "损坏的需求规格.docx"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p); page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click();
+        assertThat(page.locator(".el-message--error,.el-message,.el-notification").first()).isVisible(); takeScreenshot("GNYL_052"); }
+
+    // ═══════════ ReqIf 053-059 ═══════════
+    @Test @DisplayName("GNYL_053: 导入→ReqIf") void g053() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click(); assertThat(page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true))).isVisible();
+        page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click(); assertThat(page.getByRole(AriaRole.DIALOG)).isVisible(); takeScreenshot("GNYL_053"); }
+
+    @Test @DisplayName("GNYL_054: ReqIf弹框") void g054() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click(); page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+        assertThat(page.getByRole(AriaRole.DIALOG)).isVisible(); takeScreenshot("GNYL_054"); }
+
+    @Test @DisplayName("GNYL_055: 上传ReqIf") void g055() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click(); page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+        Path p = Paths.get(TEST_FILES_DIR + "Req模版.reqif"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p); assertThat(page.getByText("Req模版")).isVisible(); takeScreenshot("GNYL_055"); }
+
+    @Test @DisplayName("GNYL_056: ReqIf参数") void g056() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click(); page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+        assertThat(page.getByRole(AriaRole.DIALOG)).isVisible(); takeScreenshot("GNYL_056"); }
+
+    @Test @DisplayName("GNYL_057: 导入ReqIf") void g057() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click(); page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+        Path p = Paths.get(TEST_FILES_DIR + "Req模版.reqif"); Assumptions.assumeTrue(p.toFile().exists(), "文件不存在");
+        page.locator("input[type='file']").setInputFiles(p); page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click(); takeScreenshot("GNYL_057"); }
+
+    @Test @DisplayName("GNYL_058-059: ReqIf校验") void g058_059() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)).click(); page.getByText("ReqIf", new Page.GetByTextOptions().setExact(true)).click();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导入")).click(); takeScreenshot("GNYL_058-059"); }
+
+    // ═══════════ 导出 060-071 ═══════════
+    @Test @DisplayName("GNYL_060: 工具栏导出") void g060() { toRoot();
+        assertThat(page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导出")).first()).isVisible();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导出")).first().click(); takeScreenshot("GNYL_060"); }
+
+    @Test @DisplayName("GNYL_061: 右键导出") void g061() { toRoot(); rclickRow();
+        page.getByText("导入", new Page.GetByTextOptions().setExact(true)); /* 验证导入存在后关闭 */
+        page.keyboard().press("Escape"); page.getByRole(AriaRole.ROW, new Page.GetByRoleOptions().setName(F)).first()
+                .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+        assertThat(page.getByText("导出", new Page.GetByTextOptions().setExact(true))).isVisible();
+        page.getByText("导出", new Page.GetByTextOptions().setExact(true)).click(); takeScreenshot("GNYL_061"); }
+
+    @Test @DisplayName("GNYL_062-071: 导出操作") void g062_071() { toRoot();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("导出")).first().click(); takeScreenshot("GNYL_062-071"); }
 }

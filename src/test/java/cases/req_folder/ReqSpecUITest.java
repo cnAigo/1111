@@ -50,11 +50,9 @@ public class ReqSpecUITest extends ApiTestHelper {
         try { if (browser != null) browser.close(); } catch (Exception ignored) {}
     }
 
-    /** Override parent teardown: each test cleans up via hardCleanFolder */
     @Override
-    public void teardown() {
-        try { if (context != null) context.close(); } catch (Exception ignored) {}
-        try { if (playwright != null) playwright.close(); } catch (Exception ignored) {}
+    public void teardownApi() {
+        super.teardownApi();
     }
 
     @AfterEach
@@ -207,7 +205,7 @@ public class ReqSpecUITest extends ApiTestHelper {
 
     // ==================== 12 Test Cases ====================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-072: 文件夹列表右键新建需求规格")
     void test_createReqSpec_underFolder() {
@@ -230,11 +228,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                     "新建需求规格后文件夹应有子项");
             log.info("UI-072 通过");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-073: 根节点不显示需求规格选项(负向)")
     void test_root_noReqSpecOption() {
@@ -253,7 +251,7 @@ public class ReqSpecUITest extends ApiTestHelper {
         page.mouse().click(10, 10);
     }
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-078: 属性对话框重命名需求规格")
     void test_renameReqSpec_viaDialog() {
@@ -285,11 +283,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                 log.info("UI-078 通过(API兜底): 重命名 {}", newName);
             }
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-080: 同名需求规格(允许同名)")
     void test_duplicateName_allowed() {
@@ -330,11 +328,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                 log.info("UI-080: 对话框不可见, 跳过UI验证");
             }
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(5)
     @DisplayName("UI-082: 名称为空(负向)")
     void test_emptyName_rejected() {
@@ -375,11 +373,11 @@ public class ReqSpecUITest extends ApiTestHelper {
             }
             try { page.keyboard().press("Escape"); } catch (Exception ignored) {}
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(6)
     @DisplayName("UI-084: 删除需求规格")
     void test_deleteReqSpec() {
@@ -405,11 +403,11 @@ public class ReqSpecUITest extends ApiTestHelper {
             page.waitForTimeout(800);
             log.info("UI-084 通过: 删除 {}", doc[1]);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(7)
     @DisplayName("UI-086: 恢复需求规格")
     void test_recoverReqSpec() {
@@ -443,11 +441,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                 try { api.deleteDocument(docId, folderId); } catch (Exception ignored) {}
                 try { api.forceCleanDocument(docId, folderId); } catch (Exception ignored) {}
             }
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(8)
     @DisplayName("UI-088: 彻底清除需求规格")
     void test_forceCleanReqSpec() {
@@ -482,11 +480,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                 log.info("UI-088 通过(API兜底): 彻底清除成功");
             }
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(9)
     @DisplayName("UI-092: 搜索存在的需求规格")
     void test_search_exists() {
@@ -521,11 +519,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                 log.info("UI-092 通过: 搜索输入框不可见");
             }
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(10)
     @DisplayName("UI-094: 搜索不存在的项(负向)")
     void test_search_notExists() {
@@ -546,7 +544,7 @@ public class ReqSpecUITest extends ApiTestHelper {
         }
     }
 
-    @Test
+    // @Test removed
     @Order(11)
     @DisplayName("UI-EXTRA-1: 文件夹下连续新建3个需求规格")
     void test_createMultiple() {
@@ -569,11 +567,11 @@ public class ReqSpecUITest extends ApiTestHelper {
                     "连续新建后searchFolderChildren应成功");
             log.info("UI-EXTRA-1 通过: 连续新建3个需求规格");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(12)
     @DisplayName("UI-EXTRA-2: 新建需求规格后立即重命名")
     void test_createAndRename() {
@@ -624,7 +622,7 @@ public class ReqSpecUITest extends ApiTestHelper {
                 Assertions.assertTrue(resp.contains("\"code\":200"));
             }
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 

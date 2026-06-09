@@ -25,7 +25,7 @@ public class UnlockApiTest extends ApiTestHelper {
                     "检查打开模式应成功, resp: " + resp);
             log.info("检查打开模式 通过: masterId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -38,6 +38,8 @@ public class UnlockApiTest extends ApiTestHelper {
             String docId = doc[0];
             folderId = doc[2];
 
+            // Must lock first before unlock
+            api.unlockMode(docId, "lock", "admin");
             String resp = api.unlockMode(docId, "unlock", "admin");
 
             JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
@@ -45,7 +47,7 @@ public class UnlockApiTest extends ApiTestHelper {
                     "解锁应成功, resp: " + resp);
             log.info("解锁模式 通过: objectId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -58,6 +60,8 @@ public class UnlockApiTest extends ApiTestHelper {
             String docId = doc[0];
             folderId = doc[2];
 
+            // Must lock first before force unlock
+            api.unlockMode(docId, "lock", "admin");
             String resp = api.unlockMode(docId, "forceUnlock", "admin");
 
             JsonObject root = JsonParser.parseString(resp).getAsJsonObject();
@@ -65,7 +69,7 @@ public class UnlockApiTest extends ApiTestHelper {
                     "强制解锁应成功, resp: " + resp);
             log.info("强制解锁 通过: objectId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -96,7 +100,7 @@ public class UnlockApiTest extends ApiTestHelper {
             log.info("检查打开模式-空操作类型: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -116,7 +120,7 @@ public class UnlockApiTest extends ApiTestHelper {
             log.info("检查打开模式-空操作人: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -136,7 +140,7 @@ public class UnlockApiTest extends ApiTestHelper {
             log.info("解锁模式-非法模式: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -167,7 +171,7 @@ public class UnlockApiTest extends ApiTestHelper {
             log.info("解锁模式-空解锁人: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 }

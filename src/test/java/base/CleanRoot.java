@@ -12,9 +12,9 @@ public class CleanRoot {
         System.out.println("Project ID: " + projectId);
         System.out.println("WARNING: This will delete ALL folders and documents under the root node!");
 
-        var runner = new AbstractTestBase() {};
+        var runner = new ApiTestBase() {};
         try {
-            runner.setup();
+            runner.setupApi();
             runner.loginViaApi();
             runner.api.sweepATFolders(projectId);
             runner.api.cleanAllUnderRoot(projectId);
@@ -23,7 +23,7 @@ public class CleanRoot {
             System.err.println("Fatal error: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            runner.teardown();
+            runner.teardownApi();
         }
     }
 }

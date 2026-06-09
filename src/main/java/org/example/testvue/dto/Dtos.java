@@ -120,5 +120,6 @@ public class Dtos {
         public int skipped;
         public String time;
         public List<TestCaseResult> cases;
+        public List<String> warnings;
     }
 }

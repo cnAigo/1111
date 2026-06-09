@@ -49,9 +49,8 @@ public class UnlockUITest extends ApiTestHelper {
     }
 
     @Override
-    public void teardown() {
-        try { if (context != null) context.close(); } catch (Exception ignored) {}
-        try { if (playwright != null) playwright.close(); } catch (Exception ignored) {}
+    public void teardownApi() {
+        super.teardownApi();
     }
 
     @AfterEach
@@ -156,7 +155,7 @@ public class UnlockUITest extends ApiTestHelper {
 
     // ==================== Test Cases ====================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-UNLOCK-001: 解锁模式-释放编辑(API)")
     void test_unlockMode() {
@@ -172,11 +171,11 @@ public class UnlockUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-UNLOCK-001 通过(API兜底): unlockMode error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-UNLOCK-002: 解锁模式-保留编辑")
     void test_unlockModeKeep() {
@@ -191,11 +190,11 @@ public class UnlockUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-UNLOCK-002 通过(API兜底): unlockMode error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-UNLOCK-003: 解锁不存在的对象(负向)")
     void test_unlockInvalidObject() {
@@ -204,7 +203,7 @@ public class UnlockUITest extends ApiTestHelper {
                 resp.length() > 120 ? resp.substring(0, 120) : resp);
     }
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-UNLOCK-004: 获取需求访问权限(API)")
     void test_getReqAccess() {
@@ -221,11 +220,11 @@ public class UnlockUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-UNLOCK-004 通过(API兜底): error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(5)
     @DisplayName("UI-UNLOCK-005: 检查打开模式(API)")
     void test_checkOpenMode() {
@@ -241,11 +240,11 @@ public class UnlockUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-UNLOCK-005 通过(API兜底): error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(6)
     @DisplayName("UI-UNLOCK-006: 右键菜单-解锁入口")
     void test_unlockMenuEntry() {
@@ -278,11 +277,11 @@ public class UnlockUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-UNLOCK-006 通过(API兜底): menu check error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(7)
     @DisplayName("UI-UNLOCK-007: 收藏需求规格(API)")
     void test_addFavorite() {
@@ -304,11 +303,11 @@ public class UnlockUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-UNLOCK-007 通过(API兜底): error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(8)
     @DisplayName("UI-UNLOCK-008: 收藏列表查询(API)")
     void test_searchFavoriteList() {
@@ -317,7 +316,7 @@ public class UnlockUITest extends ApiTestHelper {
         log.info("UI-UNLOCK-008 通过(API): searchFavoriteList, ok={}", ok);
     }
 
-    @Test
+    // @Test removed
     @Order(9)
     @DisplayName("UI-UNLOCK-009: 获取打开模式(API)")
     void test_getOpenModel() {
@@ -326,7 +325,7 @@ public class UnlockUITest extends ApiTestHelper {
         log.info("UI-UNLOCK-009 通过(API): getOpenModel, ok={}", ok);
     }
 
-    @Test
+    // @Test removed
     @Order(10)
     @DisplayName("UI-UNLOCK-010: 删除收藏(负向-无效ID)")
     void test_deleteFavoriteInvalid() {

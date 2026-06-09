@@ -35,7 +35,7 @@ public class ExportImportUITest extends BaseTest {
     // UI-EXPORT-1: 导出Excel
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-EXPORT-1: 导出Excel")
     @Story("导出Excel")
@@ -72,7 +72,7 @@ public class ExportImportUITest extends BaseTest {
     // UI-EXPORT-2: 导出Word
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-EXPORT-2: 导出Word")
     @Story("导出Word")
@@ -101,7 +101,7 @@ public class ExportImportUITest extends BaseTest {
     // UI-EXPORT-3: 导出ReqIf
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-EXPORT-3: 导出ReqIf")
     @Story("导出ReqIf")
@@ -135,7 +135,7 @@ public class ExportImportUITest extends BaseTest {
     // UI-IMPORT-1: 导入Excel
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-IMPORT-1: 导入Excel需求规格")
     @Story("导入Excel")

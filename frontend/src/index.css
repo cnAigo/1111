@@ -42,3 +42,10 @@
   to   { opacity: 1; max-height: 600px; transform: translateY(0); }
 }
 .iframe-enter { animation: iframe-slide-up 0.45s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Tab content fade-in */
+@keyframes tab-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-tab-enter { animation: tab-enter 0.2s ease-out; }

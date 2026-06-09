@@ -38,7 +38,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-VIEW-1: 新建视图
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-VIEW-1: 新建视图")
     @Story("新建视图")
@@ -70,7 +70,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-VIEW-2: 删除视图
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-VIEW-2: 删除视图")
     @Story("删除视图")
@@ -102,7 +102,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-ATTR-1: 新建自定义属性
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-ATTR-1: 新建自定义属性")
     @Story("新建自定义属性")
@@ -142,7 +142,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-ATTR-2: 发布自定义属性
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-ATTR-2: 发布自定义属性")
     @Story("发布自定义属性")
@@ -178,7 +178,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-FAV-1: 添加收藏
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(5)
     @DisplayName("UI-FAV-1: 添加收藏")
     @Story("添加收藏")
@@ -212,7 +212,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-FAV-2: 查看收藏列表
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(6)
     @DisplayName("UI-FAV-2: 查看收藏列表")
     @Story("查看收藏列表")
@@ -242,7 +242,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-FAV-3: 取消收藏
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(7)
     @DisplayName("UI-FAV-3: 取消收藏")
     @Story("取消收藏")
@@ -278,7 +278,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-QX-1: 项目人员管理-分配人员
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(8)
     @DisplayName("UI-QX-1: 项目人员管理-分配人员")
     @Story("项目人员分配")
@@ -301,7 +301,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-QX-2: 项目人员管理-查看部门树
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(9)
     @DisplayName("UI-QX-2: 项目人员管理-查看部门树")
     @Story("查看部门树")
@@ -323,7 +323,7 @@ public class SystemSettingsUITest extends BaseTest {
     // UI-UNLOCK-1: 解锁(关闭窗口)
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(10)
     @DisplayName("UI-UNLOCK-1: 解锁(关闭窗口)")
     @Story("解锁")

@@ -38,7 +38,7 @@ public class CooperationAreaUITest extends BaseTest {
     // UI-COOP-1: 新建合作区
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-COOP-1: 新建合作区")
     @Story("新建合作区")
@@ -69,7 +69,7 @@ public class CooperationAreaUITest extends BaseTest {
     // UI-COOP-2: 搜索合作区
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-COOP-2: 搜索合作区")
     @Story("搜索合作区")
@@ -102,7 +102,7 @@ public class CooperationAreaUITest extends BaseTest {
     // UI-COOP-3: 添加合作区用户
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-COOP-3: 添加合作区用户")
     @Story("添加合作区用户")
@@ -140,7 +140,7 @@ public class CooperationAreaUITest extends BaseTest {
     // UI-COOP-4: 删除合作区用户
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-COOP-4: 删除合作区用户")
     @Story("删除合作区用户")

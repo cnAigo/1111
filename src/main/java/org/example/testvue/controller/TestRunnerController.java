@@ -89,6 +89,16 @@ public class TestRunnerController {
 
     // ── Status ──
 
+    @GetMapping("/health")
+    public Map<String, Object> health() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("alive", true);
+        m.put("status", execService.getCurrentStatus().status);
+        m.put("isRunning", execService.isRunning());
+        m.put("label", execService.getCurrentStatus().label);
+        return m;
+    }
+
     @GetMapping("/status")
     public Map<String, Object> getStatus(@RequestParam(value = "taskId", required = false) String taskId) {
         StatusResponse s = execService.getCurrentStatus();

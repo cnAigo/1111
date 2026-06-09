@@ -43,7 +43,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
                     "更新需求列表应成功, resp: " + resp);
             log.info("更新需求列表 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -85,7 +85,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             assertRejected(resp, "非法JSON应被拦截");
             log.info("更新需求列表-非法JSON 通过: 被拦截, code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -105,7 +105,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             log.info("更新需求列表-空列表: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -128,7 +128,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
                     "编辑描述应成功, resp: " + resp);
             log.info("编辑描述 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -148,7 +148,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             log.info("编辑描述-空描述: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -169,7 +169,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             log.info("编辑描述-超长描述: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -204,7 +204,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             }
             log.info("编辑描述-特殊字符XSS: code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -230,7 +230,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             api.cleanReqItem(itemId, docId);
             log.info("删除需求项 通过: itemId={}", itemId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -257,7 +257,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             api.cleanReqItem(itemId, docId);
             log.info("恢复需求项 通过: itemId={}", itemId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -302,7 +302,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("查询需求项子信息 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -335,7 +335,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             assertRejected(resp, "不存在的itemId应被拦截");
             log.info("更新需求列表-无效itemId 通过: code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -356,7 +356,7 @@ public class ReqUpdateApiTest extends ApiTestHelper {
             log.info("更新需求列表-空item对象: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 }

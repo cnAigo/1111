@@ -15,10 +15,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class BaseTest extends AbstractTestBase {
 
     protected RequirementPage reqPage;
-    protected static final String TEST_FILES_DIR = "src/main/resources/testfiles/";
 
-    @BeforeAll
     @Override
+    @BeforeAll
     public void setup() {
         super.setup();
         reqPage = new RequirementPage(page);
@@ -39,7 +38,8 @@ public class BaseTest extends AbstractTestBase {
                 page.locator("input[placeholder*='密码']").first().fill(TestConfig.ADMIN_PWD);
                 page.locator("button:has-text('登')").first().click();
                 try {
-                    page.waitForURL(u -> !u.contains("/login"), new Page.WaitForURLOptions().setTimeout(15000));
+                    page.waitForURL(u -> !u.contains("/login"),
+                            new Page.WaitForURLOptions().setTimeout(15000));
                 } catch (Exception e) { log.warn("Login redirect timeout"); }
                 waitForNetworkIdle();
                 saveAuth();
@@ -66,7 +66,11 @@ public class BaseTest extends AbstractTestBase {
             Locator dlg = page.locator(".el-dialog:visible, .el-overlay:visible, .el-message-box:visible");
             if (dlg.count() > 0) {
                 page.keyboard().press("Escape");
-                try { dlg.first().waitFor(new Locator.WaitForOptions().setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN).setTimeout(3000)); } catch (Exception ignored) {}
+                try {
+                    dlg.first().waitFor(new Locator.WaitForOptions()
+                            .setState(com.microsoft.playwright.options.WaitForSelectorState.HIDDEN)
+                            .setTimeout(3000));
+                } catch (Exception ignored) {}
             }
         } catch (Exception e) { /* dialogs already closed */ }
     }

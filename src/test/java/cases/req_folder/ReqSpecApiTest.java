@@ -28,7 +28,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
                     "树结构中应包含新建的需求规格: " + docName);
             log.info("GNYL_072 通过: 新建需求规格 [{}] docId={}", docName, docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -54,7 +54,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
                     "文件夹下创建需求规格应成功, resp: " + resp);
             log.info("GNYL_073 通过: 文件夹下创建需求规格成功, docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -102,7 +102,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
                     "树结构中不应包含旧名称: " + oldName);
             log.info("GNYL_078 通过: 重命名 {} -> {}", oldName, newName);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -130,7 +130,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
                     "需求规格应允许同名, 实际code=" + code + ", resp: " + resp);
             log.info("GNYL_080 通过: 需求规格同名允许, code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -155,7 +155,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
             log.info("GNYL_082 通过: 空名称被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -181,7 +181,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
             log.info("GNYL_082-L: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -206,7 +206,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
             log.info("GNYL_084 通过: 删除需求规格 [{}] 成功", docName);
             docId = null;
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -235,7 +235,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
                     "恢复后树结构中应包含该需求规格: " + docName);
             log.info("GNYL_086 通过: 恢复需求规格 [{}] 成功", docName);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -305,7 +305,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
                     "需求规格应允许同名, 实际code=" + code + ", resp: " + resp);
             log.info("同名需求规格 通过: 允许同名, code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -330,7 +330,7 @@ public class ReqSpecApiTest extends ApiTestHelper {
             }
             log.info("重命名-特殊字符: code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 

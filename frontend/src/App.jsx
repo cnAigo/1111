@@ -1,25 +1,23 @@
-import { useState, useCallback, useEffect } from 'react';
-import { MODULES, MODULE_OPTIONS } from './data/modules';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { MODULES } from './data/modules';
 import { useTestRun } from './hooks/useTestRun';
 import { useCaseDetails } from './hooks/useCaseDetails';
 import { useConfig } from './hooks/useConfig';
+import { apiPost, apiDelete } from './utils/api';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Toast from './components/Toast';
 import ConfigModal from './components/ConfigModal';
+import ConfirmDialog from './components/ConfirmDialog';
 import Dashboard from './pages/Dashboard';
 import Results from './pages/Results';
 import History from './pages/History';
 import FailedCases from './pages/FailedCases';
 import SettingsPage from './pages/Settings';
 
-const apiPost = async (url, body) => { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); };
-const apiDelete = async (url) => { const r = await fetch(url, { method: 'DELETE' }); return r.json(); };
-
 export default function App() {
   const [activeMenu, setActiveMenu] = useState('dashboard');
-  const [selectedModule, setSelectedModule] = useState('');
-  const [selectedClass, setSelectedClass] = useState(null);
+  const [selected, setSelected] = useState(new Set());
   const [showReport, setShowReport] = useState(false);
   const [testResults, setTestResults] = useState([]);
   const [historyList, setHistoryList] = useState([]);
@@ -28,12 +26,17 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [cleaning, setCleaning] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState({});
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Inline confirm state
-  const [confirm, setConfirm] = useState(null); // { msg, onConfirm }
+  const [confirm, setConfirm] = useState(null);
+  const lastToastRef = useRef({ msg: '', time: 0 });
 
   const showToast = useCallback((msg, type = 'info') => {
-    setToast({ msg, type, id: Date.now() });
+    // Dedup: same message within 5s → skip
+    const now = Date.now();
+    if (lastToastRef.current.msg === msg && (now - lastToastRef.current.time) < 5000) return;
+    lastToastRef.current = { msg, time: now };
+    setToast({ msg, type, id: now });
     setTimeout(() => setToast(null), 3500);
   }, []);
 
@@ -47,19 +50,37 @@ export default function App() {
     }
   }, [tr.status, cleaning]);
 
+  // Auto-collapse sidebar when running
+  useEffect(() => {
+    if (tr.isRunning) setSidebarOpen(false);
+  }, [tr.isRunning]);
+
+  const toggleSelect = useCallback((name, add) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      add ? next.add(name) : next.delete(name);
+      return next;
+    });
+  }, []);
+
   const wrappedStart = useCallback(async () => {
     if (tr.isRunning) return;
-    const tid = await tr.startTest(selectedModule, selectedClass);
-  }, [tr, selectedModule, selectedClass]);
+    const names = [...selected];
+    if (names.length === 0) { showToast('请先选择测试类', 'warning'); return; }
+    const label = names.length <= 3 ? names.join(', ') : `${names.length} 个测试类`;
+    setConfirm({ msg: `确认执行 ${label} 吗？`, onConfirm: async () => {
+      setConfirm(null);
+      setShowReport(false);
+      const tid = await tr.startTest(null, { name: names.join(','), type: 'multi' });
+    }});
+  }, [tr, selected, showToast]);
 
-  // Load data on completion
   useEffect(() => {
     if (tr.status === 'SUCCESS' || tr.status === 'FAILED') {
       setShowReport(true);
       tr.loadResults(setTestResults);
       tr.loadHistory(setHistoryList);
       tr.loadFailedCases(setFailedCases);
-      // Desktop notification
       if (Notification.permission === 'granted') {
         new Notification(tr.status === 'SUCCESS' ? '测试通过' : '测试失败', { body: tr.runningLabel });
       } else if (Notification.permission === 'default') {
@@ -73,7 +94,6 @@ export default function App() {
     }
   }, [tr.status]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const h = (e) => {
       if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); wrappedStart(); }
@@ -91,11 +111,25 @@ export default function App() {
     if (key === 'settings') config.setConfigOpen(true);
   }, [tr, config]);
 
-  const selectedLabel = selectedClass
-    ? `${selectedClass.name} [${selectedClass.type?.toUpperCase()}]`
-    : MODULE_OPTIONS.find(o=>o.value===selectedModule)?.label || '全部模块';
+  // Expose navigate for child pages
+  useEffect(() => { window.__taasNavigate = navigate; return () => delete window.__taasNavigate; }, [navigate]);
 
-  // History — expand to show output
+  const onCleanupAction = useCallback(async () => {
+    setConfirm({ msg: '确认清理环境？这将删除所有测试数据！', onConfirm: async () => {
+      setConfirm(null);
+      setCleaning(true);
+      setActiveMenu('dashboard');
+      tr.setTerminalLines([]);
+      try {
+        await fetch('/api/test/cleanup', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: config.cfgProjectId, url: config.cfgUrl, username: config.cfgUsername, password: config.cfgPassword })
+        });
+        tr.resumeTask('cleanup', '清理环境');
+      } catch (e) { showToast('清理失败: ' + e.message, 'error'); setCleaning(false); }
+    }});
+  }, [config, tr, showToast]);
+
   const toggleHistoryExpand = useCallback(async (taskId) => {
     if (expandedHistory[taskId]) { setExpandedHistory(p => { const n={...p}; delete n[taskId]; return n; }); return; }
     setExpandedHistory(p => ({ ...p, [taskId]: 'loading' }));
@@ -117,6 +151,7 @@ export default function App() {
   }, [config, showToast]);
 
   const onRerun = useCallback(async (tid) => {
+    if (tr.isRunning) { showToast('已有任务在运行中', 'warning'); return; }
     setConfirm({ msg: '确认重跑该任务的失败用例？', onConfirm: async () => {
       setConfirm(null); setActiveMenu('dashboard');
       try {
@@ -140,31 +175,21 @@ export default function App() {
   return (
     <div className="h-screen flex overflow-hidden bg-slate-50">
       <Sidebar activeMenu={activeMenu} onNavigate={navigate} status={tr.status} failedCount={failedCases.length}
-        timeDisplay={tr.durationFmt} isRunning={tr.isRunning} elapsedFmt={tr.fmtElapsed(tr.elapsedSec)} cleaning={cleaning} />
+        timeDisplay={tr.durationFmt} isRunning={tr.isRunning} elapsedFmt={tr.fmtElapsed(tr.elapsedSec)} cleaning={cleaning}
+        open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header activeMenu={activeMenu} isRunning={tr.isRunning} runningLabel={tr.runningLabel}
-          selectedModule={selectedModule} selectedClass={selectedClass} selectedLabel={selectedLabel}
-          onSelectModule={setSelectedModule} onSelectClass={setSelectedClass}
-          onStart={wrappedStart} onStop={tr.stopTest}
-          onOpenSettings={() => { config.setConfigOpen(true); config.loadConfigs(); }}
-          cleaning={cleaning} onCleanup={async () => {
-            setCleaning(true);
-            setActiveMenu('dashboard');
-            tr.setTerminalLines([]);
-            try {
-              await fetch('/api/test/cleanup', { method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ projectId: config.cfgProjectId, url: config.cfgUrl, username: config.cfgUsername, password: config.cfgPassword })
-              });
-              tr.resumeTask('cleanup', '清理环境');
-            } catch (e) { showToast('清理失败: ' + e.message, 'error'); setCleaning(false); }
-          }} />
-        <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+          onOpenSettings={() => { config.setConfigOpen(true); config.loadConfigs(); }} />
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-50/80">
           {page === 'dashboard' && (
             <Dashboard terminalLines={tr.terminalLines} isRunning={tr.isRunning} elapsedSec={tr.elapsedSec}
               showReport={showReport} status={tr.status} logFilter={logFilter} onFilterChange={setLogFilter}
-              onClear={() => tr.setTerminalLines([])} pct={tr.pct} progress={tr.progress} progressTotal={tr.progressTotal}
-              fmtElapsed={tr.fmtElapsed} runningLabel={tr.runningLabel} onCloseReport={() => setShowReport(false)} />
+              onClear={() => { tr.setTerminalLines([]); tr.appendLog('— Console cleared —', 'text-slate-500'); }} pct={tr.pct} progress={tr.progress} progressTotal={tr.progressTotal}
+              fmtElapsed={tr.fmtElapsed} runningLabel={tr.runningLabel} onCloseReport={() => setShowReport(false)}
+              testResults={testResults} historyList={historyList}
+              modules={MODULES} selected={selected} onToggle={toggleSelect}
+              onStart={wrappedStart} onStop={tr.stopTest} onCleanup={onCleanupAction}
+              cleaning={cleaning} selectedCount={selected.size} caseDetails={caseDetails.details} />
           )}
           {page === 'results' && <Results testResults={testResults} caseDetails={caseDetails.details} />}
           {page === 'history' && <History historyList={historyList} onRerun={onRerun} onDelete={onDeleteHistory}
@@ -180,18 +205,9 @@ export default function App() {
         configFormName={config.configFormName} setConfigFormName={config.setConfigFormName}
         onSave={config.saveConfig} onDelete={config.deleteConfig} />
       <Toast toast={toast} onClose={() => setToast(null)} />
-      {/* Inline confirm dialog */}
       {confirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center" onClick={() => setConfirm(null)}>
-          <div className="absolute inset-0 bg-black/30" />
-          <div className="relative bg-white rounded-2xl shadow-xl px-6 py-5 max-w-sm w-full animate-slide-up" onClick={e => e.stopPropagation()}>
-            <p className="text-sm text-slate-700 mb-4">{confirm.msg}</p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setConfirm(null)} className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">取消</button>
-              <button onClick={confirm.onConfirm} className="px-4 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700">确认</button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog message={confirm.msg} onConfirm={confirm.onConfirm}
+          onCancel={() => setConfirm(null)} />
       )}
     </div>
   );

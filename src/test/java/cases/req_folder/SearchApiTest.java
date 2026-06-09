@@ -45,7 +45,7 @@ public class SearchApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("搜索文件夹子元素 通过: folderId={}", folderId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -135,7 +135,7 @@ public class SearchApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("获取需求规格列表 通过: 包含 docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -194,7 +194,7 @@ public class SearchApiTest extends ApiTestHelper {
                     "找到的节点ID应与创建的文件夹ID一致");
             log.info("按名称查找节点ID 通过: [{}] -> {}", folderName, nodeId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 

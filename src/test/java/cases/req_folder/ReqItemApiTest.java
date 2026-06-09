@@ -35,7 +35,7 @@ public class ReqItemApiTest extends ApiTestHelper {
                     "查询结果应包含新创建的需求项: " + itemId);
             log.info("新建需求项 通过: reqItemId={}, docId={}", itemId, docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -56,7 +56,7 @@ public class ReqItemApiTest extends ApiTestHelper {
             log.info("新建需求项-空父节点 通过: 被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -93,7 +93,7 @@ public class ReqItemApiTest extends ApiTestHelper {
             log.info("删除需求项 通过: reqItemId={} 已删除", itemId);
             itemId = null;
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -138,7 +138,7 @@ public class ReqItemApiTest extends ApiTestHelper {
                     "查询结果应包含恢复后的需求项: " + itemId);
             log.info("恢复需求项 通过: reqItemId={} 已恢复", itemId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -168,7 +168,7 @@ public class ReqItemApiTest extends ApiTestHelper {
             log.info("彻底删除需求项 通过: reqItemId={} 已彻底删除", itemId);
             itemId = null;
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -199,7 +199,7 @@ public class ReqItemApiTest extends ApiTestHelper {
                     "结果应包含第2个需求项: " + itemId2);
             log.info("查询子需求项 通过: docId={} 包含 {} 和 {}", docId, itemId1, itemId2);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -219,7 +219,7 @@ public class ReqItemApiTest extends ApiTestHelper {
                     "空文档查询应成功, resp: " + resp);
             log.info("查询空文档子需求项 通过: 返回正常");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 }

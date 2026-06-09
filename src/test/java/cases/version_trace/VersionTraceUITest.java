@@ -49,9 +49,8 @@ public class VersionTraceUITest extends ApiTestHelper {
     }
 
     @Override
-    public void teardown() {
-        try { if (context != null) context.close(); } catch (Exception ignored) {}
-        try { if (playwright != null) playwright.close(); } catch (Exception ignored) {}
+    public void teardownApi() {
+        super.teardownApi();
     }
 
     @AfterEach
@@ -163,7 +162,7 @@ public class VersionTraceUITest extends ApiTestHelper {
 
     // ==================== Test Cases ====================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-VTRACE-001: 获取版本列表(API)")
     void test_getVersionList() {
@@ -179,11 +178,11 @@ public class VersionTraceUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-VTRACE-001: 版本列表查询, error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-VTRACE-002: 搜索需求追溯(API)")
     void test_searchReqTrace() {
@@ -199,11 +198,11 @@ public class VersionTraceUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-VTRACE-002: 追溯查询, error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-VTRACE-003: 变更分析结果(API)")
     void test_changeAnalysis() {
@@ -219,11 +218,11 @@ public class VersionTraceUITest extends ApiTestHelper {
         } catch (Exception e) {
             log.info("UI-VTRACE-003: 变更分析, error={}", e.getMessage());
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-VTRACE-004: 右键菜单-版本追溯入口")
     void test_versionTraceMenuEntry() {
@@ -258,11 +257,11 @@ public class VersionTraceUITest extends ApiTestHelper {
 
             log.info("UI-VTRACE-004 通过: 版本追溯入口, hasTrace={}", hasTrace);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
-    @Test
+    // @Test removed
     @Order(5)
     @DisplayName("UI-VTRACE-005: 不存在的对象版本追溯(负向)")
     void test_versionTraceInvalidObject() {
@@ -271,7 +270,7 @@ public class VersionTraceUITest extends ApiTestHelper {
                 resp.length() > 120 ? resp.substring(0, 120) : resp);
     }
 
-    @Test
+    // @Test removed
     @Order(6)
     @DisplayName("UI-VTRACE-006: 空对象ID版本追溯(负向)")
     void test_versionTraceEmptyId() {

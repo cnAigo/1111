@@ -37,7 +37,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             log.info("GNYL_060 通过: 导出Excel成功, size={} bytes{}",
                     body.length, contentType != null ? ", contentType=" + contentType : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -72,7 +72,7 @@ public class ExportImportApiTest extends ApiTestHelper {
                     "导出文件应有一定大小, actual=" + body.length + " bytes");
             log.info("GNYL_063 通过: 导出Word成功, size={} bytes", body.length);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -90,7 +90,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             log.info("导出Word-空模板: status={}, size={} bytes", response.status(),
                     response.body().length);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -128,7 +128,7 @@ public class ExportImportApiTest extends ApiTestHelper {
                     "导出ReqIf应成功, resp: " + resp);
             log.info("GNYL_066 通过: 导出ReqIf成功, docName={}", docName);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -158,7 +158,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             log.info("导出ReqIf-空文件名 通过: 被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -259,7 +259,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             log.info("GNYL_042 通过: 空数据导入被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -280,7 +280,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             log.info("导入-空名称 通过: 被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -306,7 +306,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             log.info("导出Excel-空模板: status={}, size={} bytes",
                     response.status(), response.body().length);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -369,7 +369,7 @@ public class ExportImportApiTest extends ApiTestHelper {
             assertRejected(resp, "非法JSON应被拦截");
             log.info("导入-非法JSON 通过: code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 

@@ -28,7 +28,33 @@ public class IndicatorApiActions {
         body.addProperty("name", name);
         body.addProperty("description", description != null ? description : "");
         body.addProperty("projectId", projectId);
-        return post(MOE + "/add/addLogicStructure", body);
+        String resp = post(MOE + "/add/addLogicStructure", body);
+        if (!isOk(resp)) return resp;
+        // API returns no ID in response — query the list to find it by name
+        String listResp = searchLogicStructureList();
+        if (!isOk(listResp)) return listResp;
+        try {
+            JsonObject root = JsonParser.parseString(listResp).getAsJsonObject();
+            JsonArray data = root.getAsJsonArray("data");
+            if (data != null) for (JsonElement e : data) {
+                JsonObject item = e.getAsJsonObject();
+                if (name.equals(item.has("name") ? item.get("name").getAsString() : "")) {
+                    String id = item.has("id") ? item.get("id").getAsString()
+                               : item.has("objectId") ? item.get("objectId").getAsString() : "";
+                    if (!id.isEmpty()) {
+                        // Return a synthetic response that extractId can parse
+                        JsonObject synth = new JsonObject();
+                        synth.addProperty("code", 200);
+                        JsonObject d = new JsonObject();
+                        d.addProperty("id", id);
+                        synth.add("data", d);
+                        return synth.toString();
+                    }
+                }
+            }
+        } catch (Exception ex) { log.warn("addLogicStructure findId failed: {}", ex.getMessage()); }
+        // Return original success response (extractId will fail, caller gets null)
+        return resp;
     }
 
     public String searchLogicStructureList() {

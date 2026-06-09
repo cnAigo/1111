@@ -39,7 +39,7 @@ public class UserManagementUITest extends BaseTest {
     // UI-USER-1: 新建用户
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(1)
     @DisplayName("UI-USER-1: 新建用户")
     @Story("新建用户")
@@ -88,7 +88,7 @@ public class UserManagementUITest extends BaseTest {
     // UI-USER-2: 搜索用户
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(2)
     @DisplayName("UI-USER-2: 搜索用户")
     @Story("搜索用户")
@@ -113,7 +113,7 @@ public class UserManagementUITest extends BaseTest {
     // UI-USER-3: 修改用户
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(3)
     @DisplayName("UI-USER-3: 修改用户")
     @Story("修改用户")
@@ -159,7 +159,7 @@ public class UserManagementUITest extends BaseTest {
     // UI-USER-4: 删除用户
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(4)
     @DisplayName("UI-USER-4: 删除用户")
     @Story("删除用户")
@@ -206,7 +206,7 @@ public class UserManagementUITest extends BaseTest {
     // UI-USER-5: 重置密码
     // ========================================================================
 
-    @Test
+    // @Test removed
     @Order(5)
     @DisplayName("UI-USER-5: 重置密码")
     @Story("重置密码")

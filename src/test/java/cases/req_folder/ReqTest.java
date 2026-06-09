@@ -33,6 +33,7 @@ public class ReqTest extends BaseTest {
         String[] doc = createTempDoc();
         try {
             Assertions.assertFalse(doc[0].isEmpty(), "未能获取到新创建文档的 ID");
+            takeScreenshot("GNYL_072_new_req");
             log.info("GNYL_072 新建需求规格成功, docId={}", doc[0]);
         } finally {
             cleanupDoc(doc[0], doc[2]);
@@ -48,6 +49,7 @@ public class ReqTest extends BaseTest {
             String resp = api.renameDocument(PROJECT_ID, doc[0], doc[2], newName);
             Assertions.assertTrue(resp.contains("200"), "业务返回码不是200: " + resp);
             Assertions.assertTrue(resp.contains("修改成功"), "返回信息不匹配: " + resp);
+            takeScreenshot("GNYL_078_modify_req");
             log.info("GNYL_078 需求规格名称修改成功");
         } finally {
             cleanupDoc(doc[0], doc[2]);
@@ -116,6 +118,7 @@ public class ReqTest extends BaseTest {
             page.getByRole(AriaRole.OPTION, new Page.GetByRoleOptions().setName("需求树")).click();
 
             assertThat(page.getByText(TestConstants.ROOT_NODE).first()).isVisible();
+            takeScreenshot("GNYL_091_tree_view");
             log.info("GNYL_091 需求树视图切换通过");
         } finally {
             cleanupDoc(doc[0], doc[2]);
@@ -140,6 +143,7 @@ public class ReqTest extends BaseTest {
             assertThat(dialog.getByText("最后修改者:")).isVisible();
             assertThat(dialog.getByText("写权限:")).isVisible();
 
+            takeScreenshot("GNYL_096_view_properties");
             page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("取 消")).click();
             page.waitForTimeout(500);
             log.info("GNYL_096 属性查看通过");

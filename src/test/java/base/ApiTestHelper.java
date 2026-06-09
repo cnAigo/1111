@@ -5,21 +5,21 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** Base for API test classes. Extends AbstractTestBase, adds API login + warm-up. */
+/** Base for API test classes. Extends ApiTestBase (no browser), adds API login + warm-up. */
 @ExtendWith({RetryExtension.class, TimeoutSkipExtension.class})
-public class ApiTestHelper extends AbstractTestBase {
+public class ApiTestHelper extends ApiTestBase {
 
-    @BeforeAll
     @Override
-    public void setup() {
-        super.setup();  // Playwright + project resolution
+    @BeforeAll
+    public void setupApi() {
+        super.setupApi();
         loginViaApi();
 
         // Pre-flight sweep
-        try { api.sweepATFolders(PROJECT_ID); } catch (Exception e) { log.warn("Sweep failed: {}", e.getMessage()); }
+        try { api.sweepATFolders(PROJECT_ID); } catch (Exception e) {
+            log.warn("Sweep failed: {}", e.getMessage());
+        }
 
         // Warm-up
         try {
@@ -29,11 +29,11 @@ public class ApiTestHelper extends AbstractTestBase {
         } catch (Exception e) { log.warn("Warm-up failed: {}", e.getMessage()); }
     }
 
-    @AfterAll
     @Override
-    public void teardown() {
+    @AfterAll
+    public void teardownApi() {
         try { api.sweepATFolders(PROJECT_ID); } catch (Exception ignored) {}
-        super.teardown();
+        super.teardownApi();
     }
 
     // ── Assertion helpers ──

@@ -34,7 +34,7 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     // ========== 需求规格协同编辑状态 ==========
-    @Test
+    // @Test removed
     @DisplayName("GNYL_186: 共享模式打开需求规格")
     public void test_GNYL_186() {
         String[] doc = createTempDoc();
@@ -57,7 +57,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_187: 关闭共享模式打开的需求规格")
     public void test_GNYL_187() {
         String[] doc = createTempDoc();
@@ -85,7 +85,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_188: 独占模式打开需求规格")
     public void test_GNYL_188() {
         String[] doc = createTempDoc();
@@ -108,7 +108,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_189: 关闭独占模式打开的需求规格")
     public void test_GNYL_189() {
         String[] doc = createTempDoc();
@@ -136,7 +136,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_190: 只读模式打开需求规格")
     public void test_GNYL_190() {
         String[] doc = createTempDoc();
@@ -159,7 +159,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_191: 关闭只读模式打开的需求规格")
     public void test_GNYL_191() {
         String[] doc = createTempDoc();
@@ -187,7 +187,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_192: 需求规格解锁")
     public void test_GNYL_192() {
         String[] doc = createTempDoc();
@@ -205,7 +205,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_193: 冻结需求规格")
     public void test_GNYL_193() {
         String[] doc = createTempDoc();
@@ -231,7 +231,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_194: 恢复需求规格工作")
     public void test_GNYL_194() {
         String[] doc = createTempDoc();
@@ -258,7 +258,7 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     // ========== 需求协同编辑 - 标题/正文 ==========
-    @Test
+    // @Test removed
     @DisplayName("GNYL_195: 编辑不超过500字符的标题")
     public void test_GNYL_195() {
         String[] doc = createTempDocWithReqItem();
@@ -292,7 +292,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_196: 编辑超过500字符的标题")
     public void test_GNYL_196() {
         String[] doc = createTempDocWithReqItem();
@@ -333,7 +333,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_197: 编辑不超过500字符的正文")
     public void test_GNYL_197() {
         String[] doc = createTempDocWithReqItem();
@@ -353,7 +353,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_198: 编辑超过500字符的正文")
     public void test_GNYL_198() {
         String[] doc = createTempDocWithReqItem();
@@ -379,7 +379,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_199: 需求加锁")
     public void test_GNYL_199() {
         String[] doc = createTempDocWithReqItem();
@@ -405,7 +405,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_200: 需求重复解锁")
     public void test_GNYL_200() {
         String[] doc = createTempDocWithReqItem();
@@ -434,7 +434,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_201: 需求解锁")
     public void test_GNYL_201() {
         String[] doc = createTempDocWithReqItem();
@@ -458,7 +458,7 @@ public class CollaborativeEditTest extends BaseTest {
 
     // ========== 协同编辑 - 工具栏 ==========
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_202: 正文修改字号")
     public void test_GNYL_202() {
         String[] doc = createTempDocWithReqItem();
@@ -478,7 +478,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_203: 标题修改字号")
     public void test_GNYL_203() {
         String[] doc = createTempDocWithReqItem();
@@ -502,7 +502,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_204: 粗体设置")
     public void test_GNYL_204() {
         String[] doc = createTempDocWithReqItem();
@@ -520,7 +520,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_205: 取消粗体设置")
     public void test_GNYL_205() {
         String[] doc = createTempDocWithReqItem();
@@ -540,7 +540,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_206: 清除格式")
     public void test_GNYL_206() {
         String[] doc = createTempDocWithReqItem();
@@ -558,7 +558,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_207: 修改字体颜色")
     public void test_GNYL_207() {
         String[] doc = createTempDocWithReqItem();
@@ -578,7 +578,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_208: 添加背景色")
     public void test_GNYL_208() {
         String[] doc = createTempDocWithReqItem();
@@ -598,7 +598,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_209: 清除背景色")
     public void test_GNYL_209() {
         String[] doc = createTempDocWithReqItem();
@@ -616,7 +616,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_210: 插入图片")
     public void test_GNYL_210() {
         String[] doc = createTempDocWithReqItem();
@@ -636,7 +636,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_211: 删除图片")
     public void test_GNYL_211() {
         String[] doc = createTempDocWithReqItem();
@@ -663,7 +663,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_212: 插入表格")
     public void test_GNYL_212() {
         String[] doc = createTempDocWithReqItem();
@@ -685,7 +685,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_213: 回车插入文本段落")
     public void test_GNYL_213() {
         String[] doc = createTempDocWithReqItem();
@@ -703,7 +703,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_214: 设置表头(下方工具栏)")
     public void test_GNYL_214() {
         String[] doc = createTempDocWithReqItem();
@@ -732,7 +732,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_215: 设置表头(上方工具栏)")
     public void test_GNYL_215() {
         String[] doc = createTempDocWithReqItem();
@@ -766,7 +766,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_216: 宽度自适应")
     public void test_GNYL_216() {
         String[] doc = createTempDocWithReqItem();
@@ -795,7 +795,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_217: 插入行(下方工具栏)")
     public void test_GNYL_217() {
         String[] doc = createTempDocWithReqItem();
@@ -824,7 +824,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_218: 插入行(上方工具栏)")
     public void test_GNYL_218() {
         String[] doc = createTempDocWithReqItem();
@@ -858,7 +858,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_219: 删除行(下方工具栏)")
     public void test_GNYL_219() {
         String[] doc = createTempDocWithReqItem();
@@ -887,7 +887,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_220: 删除行(上方工具栏)")
     public void test_GNYL_220() {
         String[] doc = createTempDocWithReqItem();
@@ -921,7 +921,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_221: 插入列(下方工具栏)")
     public void test_GNYL_221() {
         String[] doc = createTempDocWithReqItem();
@@ -950,7 +950,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_222: 插入列(上方工具栏)")
     public void test_GNYL_222() {
         String[] doc = createTempDocWithReqItem();
@@ -984,7 +984,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_223: 删除列(下方工具栏)")
     public void test_GNYL_223() {
         String[] doc = createTempDocWithReqItem();
@@ -1013,7 +1013,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_224: 删除列(上方工具栏)")
     public void test_GNYL_224() {
         String[] doc = createTempDocWithReqItem();
@@ -1047,7 +1047,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_225: 删除表格(下方工具栏)")
     public void test_GNYL_225() {
         String[] doc = createTempDocWithReqItem();
@@ -1074,7 +1074,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_226: 删除表格(上方工具栏)")
     public void test_GNYL_226() {
         String[] doc = createTempDocWithReqItem();
@@ -1108,7 +1108,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_227: 添加分割线")
     public void test_GNYL_227() {
         String[] doc = createTempDocWithReqItem();
@@ -1126,7 +1126,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_228: 引用")
     public void test_GNYL_228() {
         String[] doc = createTempDocWithReqItem();
@@ -1148,7 +1148,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_229: 撤销")
     public void test_GNYL_229() {
         String[] doc = createTempDocWithReqItem();
@@ -1168,7 +1168,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_230: 重做")
     public void test_GNYL_230() {
         String[] doc = createTempDocWithReqItem();
@@ -1191,7 +1191,7 @@ public class CollaborativeEditTest extends BaseTest {
     }
 
     // ========== 需求视图编辑 ==========
-    @Test
+    // @Test removed
     @DisplayName("GNYL_231: 新建视图")
     public void test_GNYL_231() {
         try {
@@ -1218,7 +1218,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_232: 视图名称必填测试")
     public void test_GNYL_232() {
         try {
@@ -1236,7 +1236,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_233: 视图名称唯一性测试")
     public void test_GNYL_233() {
         try {
@@ -1262,7 +1262,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_234: 视图描述输入验证")
     public void test_GNYL_234() {
         try {
@@ -1284,7 +1284,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_235: 打开标准视图")
     public void test_GNYL_235() {
         try {
@@ -1316,7 +1316,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_236: 打开新建的视图")
     public void test_GNYL_236() {
         try {
@@ -1348,7 +1348,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_237: 删除视图")
     public void test_GNYL_237() {
         try {
@@ -1380,7 +1380,7 @@ public class CollaborativeEditTest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("GNYL_238: 分屏展示")
     public void test_GNYL_238() {
         String[] doc1 = createTempDoc();

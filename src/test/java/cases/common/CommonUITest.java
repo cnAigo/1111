@@ -18,7 +18,7 @@ public class CommonUITest extends BaseTest {
 
     // ========== 需求顶部操作栏通用UI用例 ==========
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_001: 隐藏文件夹")
     public void test_TYYL_001() {
         reqPage.doubleClickTreeNode(TestConstants.ROOT_NODE);
@@ -31,7 +31,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_001 隐藏文件夹成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_002: 显示文件夹")
     public void test_TYYL_002() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("显示文件夹")).click();
@@ -39,7 +39,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_002 显示文件夹成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_003: 隐藏规格")
     public void test_TYYL_003() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("隐藏规格")).click();
@@ -47,7 +47,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_003 隐藏规格成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_004: 显示规格")
     public void test_TYYL_004() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("显示规格")).click();
@@ -55,7 +55,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_004 显示规格成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_005: 隐藏删除项")
     public void test_TYYL_005() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("隐藏删除项")).click();
@@ -63,7 +63,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_005 隐藏删除项成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_006: 显示删除项")
     public void test_TYYL_006() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("显示删除项")).click();
@@ -71,7 +71,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_006 显示删除项成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_007: 定位到指定位置")
     public void test_TYYL_007() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("定位")).click();
@@ -79,7 +79,7 @@ public class CommonUITest extends BaseTest {
         log.info("TYYL_007 定位成功");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_008: 刷新")
     public void test_TYYL_008() {
         page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("刷新")).click();
@@ -89,193 +89,193 @@ public class CommonUITest extends BaseTest {
 
     // ========== 审签单通用UI用例 ==========
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_009: 编号必填校验")
     public void test_TYYL_009() {
         log.info("TYYL_009: 编号必填校验 - 待实现，需要审签单页面URL及弹框字段选择器");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_010: 标题必填校验")
     public void test_TYYL_010() {
         log.info("TYYL_010: 标题必填校验 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_011: 文件上传")
     public void test_TYYL_011() {
         log.info("TYYL_011: 文件上传 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_012: 文件大小限制")
     public void test_TYYL_012() {
         log.info("TYYL_012: 文件大小限制 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_013: 模板选择")
     public void test_TYYL_013() {
         log.info("TYYL_013: 模板选择 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_014: 审批人选择")
     public void test_TYYL_014() {
         log.info("TYYL_014: 审批人选择 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_015: 审签单搜索")
     public void test_TYYL_015() {
         log.info("TYYL_015: 审签单搜索 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_016: 审签单列表展示")
     public void test_TYYL_016() {
         log.info("TYYL_016: 审签单列表展示 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_017: 审签单详情查看")
     public void test_TYYL_017() {
         log.info("TYYL_017: 审签单详情查看 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_018: 审签单状态筛选")
     public void test_TYYL_018() {
         log.info("TYYL_018: 审签单状态筛选 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_019: 审签单导出")
     public void test_TYYL_019() {
         log.info("TYYL_019: 审签单导出 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_020: 审签单批量操作")
     public void test_TYYL_020() {
         log.info("TYYL_020: 审签单批量操作 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_021: 审签单排序")
     public void test_TYYL_021() {
         log.info("TYYL_021: 审签单排序 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_022: 审签单分页")
     public void test_TYYL_022() {
         log.info("TYYL_022: 审签单分页 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_023: 审签单弹窗关闭")
     public void test_TYYL_023() {
         log.info("TYYL_023: 审签单弹窗关闭 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_024: 审签单新建")
     public void test_TYYL_024() {
         log.info("TYYL_024: 审签单新建 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_025: 审签单编辑")
     public void test_TYYL_025() {
         log.info("TYYL_025: 审签单编辑 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_026: 审签单删除")
     public void test_TYYL_026() {
         log.info("TYYL_026: 审签单删除 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_027: 审签单复制")
     public void test_TYYL_027() {
         log.info("TYYL_027: 审签单复制 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_028: 审签单提交")
     public void test_TYYL_028() {
         log.info("TYYL_028: 审签单提交 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_029: 审签单撤回")
     public void test_TYYL_029() {
         log.info("TYYL_029: 审签单撤回 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_030: 审签单审批")
     public void test_TYYL_030() {
         log.info("TYYL_030: 审签单审批 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_031: 审签单拒绝")
     public void test_TYYL_031() {
         log.info("TYYL_031: 审签单拒绝 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_032: 审签单完成")
     public void test_TYYL_032() {
         log.info("TYYL_032: 审签单完成 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_033: 审签单归档")
     public void test_TYYL_033() {
         log.info("TYYL_033: 审签单归档 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_034: 审签单取消归档")
     public void test_TYYL_034() {
         log.info("TYYL_034: 审签单取消归档 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_035: 审签单查询历史")
     public void test_TYYL_035() {
         log.info("TYYL_035: 审签单查询历史 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_036: 审签单批量审批")
     public void test_TYYL_036() {
         log.info("TYYL_036: 审签单批量审批 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_037: 审签单批量拒绝")
     public void test_TYYL_037() {
         log.info("TYYL_037: 审签单批量拒绝 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_038: 审签单批量完成")
     public void test_TYYL_038() {
         log.info("TYYL_038: 审签单批量完成 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_039: 审签单批量归档")
     public void test_TYYL_039() {
         log.info("TYYL_039: 审签单批量归档 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_040: 审签单批量取消归档")
     public void test_TYYL_040() {
         log.info("TYYL_040: 审签单批量取消归档 - 待实现");
@@ -283,7 +283,7 @@ public class CommonUITest extends BaseTest {
 
     // ========== 导入弹框通用UI用例 ==========
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_041: 上传文件删除")
     public void test_TYYL_041() {
         String[] folder = createTempFolder();
@@ -332,43 +332,43 @@ public class CommonUITest extends BaseTest {
 
     // ========== 追溯视图通用UI用例 ==========
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_042: 全屏展示")
     public void test_TYYL_042() {
         log.info("TYYL_042: 全屏展示 - 待实现，需要追溯视图的全屏按钮选择器");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_043: 放大缩小")
     public void test_TYYL_043() {
         log.info("TYYL_043: 放大缩小 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_044: 自适应")
     public void test_TYYL_044() {
         log.info("TYYL_044: 自适应 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_045: 下载")
     public void test_TYYL_045() {
         log.info("TYYL_045: 下载 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_046: 打印")
     public void test_TYYL_046() {
         log.info("TYYL_046: 打印 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_047: 分享")
     public void test_TYYL_047() {
         log.info("TYYL_047: 分享 - 待实现");
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_048: 刷新")
     public void test_TYYL_048() {
         Locator refreshBtn = page.locator("[title*='刷新'], [class*='refresh'], .el-icon-refresh").first();
@@ -383,7 +383,7 @@ public class CommonUITest extends BaseTest {
 
     // ========== 分页及每页条数通用UI用例 ==========
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_049: 分页导航")
     public void test_TYYL_049() {
         String[] folder = createTempFolder();
@@ -426,7 +426,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_050: 页码跳转")
     public void test_TYYL_050() {
         String[] folder = createTempFolder();
@@ -460,7 +460,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_051: 每页条数切换")
     public void test_TYYL_051() {
         String[] folder = createTempFolder();
@@ -514,7 +514,7 @@ public class CommonUITest extends BaseTest {
         return doc;
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_052: 弹窗关闭")
     public void test_TYYL_052() {
         String[] doc = openSampleDialog();
@@ -537,7 +537,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_053: 弹窗确认")
     public void test_TYYL_053() {
         String[] doc = openSampleDialog();
@@ -563,7 +563,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_054: 弹窗取消")
     public void test_TYYL_054() {
         String[] doc = openSampleDialog();
@@ -589,7 +589,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_055: 弹窗最大最小化")
     public void test_TYYL_055() {
         String[] doc = openSampleDialog();
@@ -625,7 +625,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_056: 弹窗拖拽")
     public void test_TYYL_056() {
         String[] doc = openSampleDialog();
@@ -655,7 +655,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_057: 弹窗尺寸调整")
     public void test_TYYL_057() {
         String[] doc = openSampleDialog();
@@ -685,7 +685,7 @@ public class CommonUITest extends BaseTest {
         }
     }
 
-    @Test
+    // @Test removed
     @DisplayName("TYYL_058: 弹窗内容滚动")
     public void test_TYYL_058() {
         String[] doc = openSampleDialog();

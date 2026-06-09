@@ -7,8 +7,8 @@ export const MODULES = [
     { name:'SearchApiTest', type:'api', desc:'项目/文件夹/属性多维度搜索' },
     { name:'FavoriteApiTest', type:'api', desc:'收藏夹添加/搜索/删除' },
     { name:'ViewApiTest', type:'api', desc:'需求视图新建/查询/删除' },
-    { name:'RequirementCrudUITest', type:'ui', desc:'需求规格增删改查全流程 UI' },
     { name:'ReqSpecUITest', type:'ui', desc:'需求规格交互：新建/重命名/删除' },
+    { name:'RequirementFolderUITest', type:'ui', desc:'需求文件夹UI：CRUD全流程 (22 tests)' },
     { name:'ReqTest', type:'ui', desc:'需求条目全流程：CRUD/属性编辑' },
   ]},
   { tag:'AttributeModule', label:'自定义属性', icon:'🏷️', color:'#3b82f6', classes:[
@@ -19,8 +19,7 @@ export const MODULES = [
   ]},
   { tag:'IOModule', label:'导入导出', icon:'📤', color:'#10b981', classes:[
     { name:'ExportImportApiTest', type:'api', desc:'Excel/Word/ReqIf导出+模板下载+导入校验' },
-    { name:'ExportUITest', type:'ui', desc:'导出交互：节点选中→导出→下载' },
-    { name:'ImportUITest', type:'ui', desc:'导入交互：文件选择→目标文件夹→验证' },
+    { name:'ExportImportUITest', type:'ui', desc:'导入导出交互：文件选择→导出/导入→下载/验证' },
     { name:'WordImportTest', type:'ui', desc:'Word导入专项' },
   ]},
   { tag:'CollaborationModule', label:'协作区', icon:'🤝', color:'#8b5cf6', classes:[

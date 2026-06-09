@@ -28,7 +28,7 @@ public class FolderApiTest extends ApiTestHelper {
                     "树结构中应包含新建的文件夹: " + folderName);
             log.info("GNYL_012 通过: 新建文件夹 [{}] id={}", folderName, folderId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -46,7 +46,7 @@ public class FolderApiTest extends ApiTestHelper {
             log.info("GNYL_012-N 通过: 空名称被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -69,8 +69,8 @@ public class FolderApiTest extends ApiTestHelper {
             Assertions.assertTrue(treeResp.contains(childName), "树中应有子文件夹");
             log.info("GNYL_013 通过: 子文件夹 [{}] 创建在 [{}] 下", childName, parentName);
         } finally {
-            if (childId != null) hardCleanFolder(childId);
-            if (parentId != null) hardCleanFolder(parentId);
+            if (childId != null) forceCleanFolder(childId);
+            if (parentId != null) forceCleanFolder(parentId);
         }
     }
 
@@ -95,9 +95,9 @@ public class FolderApiTest extends ApiTestHelper {
             Assertions.assertTrue(treeResp.contains("AT_Child2_"), "树中应有同级子文件夹");
             log.info("GNYL_016 通过: 同级文件夹创建成功");
         } finally {
-            if (child1Id != null) hardCleanFolder(child1Id);
-            if (child2Id != null) hardCleanFolder(child2Id);
-            if (parentId != null) hardCleanFolder(parentId);
+            if (child1Id != null) forceCleanFolder(child1Id);
+            if (child2Id != null) forceCleanFolder(child2Id);
+            if (parentId != null) forceCleanFolder(parentId);
         }
     }
 
@@ -126,7 +126,7 @@ public class FolderApiTest extends ApiTestHelper {
                     "树结构中不应包含旧名称: " + oldName);
             log.info("GNYL_018 通过: 重命名 {} -> {}", oldName, newName);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -152,8 +152,8 @@ public class FolderApiTest extends ApiTestHelper {
             log.info("GNYL_020 通过: 重复名称被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId1 != null) hardCleanFolder(folderId1);
-            if (folderId2 != null) hardCleanFolder(folderId2);
+            if (folderId1 != null) forceCleanFolder(folderId1);
+            if (folderId2 != null) forceCleanFolder(folderId2);
         }
     }
 
@@ -177,7 +177,7 @@ public class FolderApiTest extends ApiTestHelper {
             log.info("GNYL_022 通过: 空名称被拦截, code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -202,7 +202,7 @@ public class FolderApiTest extends ApiTestHelper {
             log.info("GNYL_022-L: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -226,7 +226,7 @@ public class FolderApiTest extends ApiTestHelper {
             }
             log.info("重命名-特殊字符: code={}", code);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -259,7 +259,7 @@ public class FolderApiTest extends ApiTestHelper {
             log.info("GNYL_027 通过: 删除空文件夹 [{}] 成功", folderName);
             folderId = null;
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -286,7 +286,7 @@ public class FolderApiTest extends ApiTestHelper {
                     "恢复后树结构中应包含该文件夹: " + folderName);
             log.info("GNYL_029 通过: 恢复文件夹 [{}] 成功", folderName);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -309,7 +309,7 @@ public class FolderApiTest extends ApiTestHelper {
             log.info("GNYL_031 通过: 彻底删除文件夹 [{}] 成功", folderName);
             folderId = null;
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -349,9 +349,9 @@ public class FolderApiTest extends ApiTestHelper {
             parentId = null;
             log.info("GNYL_023/024 通过: 删除含子元素文件夹成功");
         } finally {
-            if (childId != null) hardCleanFolder(childId);
+            if (childId != null) forceCleanFolder(childId);
             if (docId != null) cleanupDoc(docId, parentId != null ? parentId : PROJECT_ID);
-            if (parentId != null) hardCleanFolder(parentId);
+            if (parentId != null) forceCleanFolder(parentId);
         }
     }
 
@@ -408,9 +408,9 @@ public class FolderApiTest extends ApiTestHelper {
             parentId = null;
             grandParentId = null;
         } finally {
-            if (childId != null) hardCleanFolder(childId);
-            if (parentId != null) hardCleanFolder(parentId);
-            if (grandParentId != null) hardCleanFolder(grandParentId);
+            if (childId != null) forceCleanFolder(childId);
+            if (parentId != null) forceCleanFolder(parentId);
+            if (grandParentId != null) forceCleanFolder(grandParentId);
         }
     }
 
@@ -471,8 +471,8 @@ public class FolderApiTest extends ApiTestHelper {
                     "子元素列表应包含子文件夹: " + childName);
             log.info("查询文件夹子元素 通过: folder={}, child={}", folderName, childName);
         } finally {
-            if (childId != null) hardCleanFolder(childId);
-            if (folderId != null) hardCleanFolder(folderId);
+            if (childId != null) forceCleanFolder(childId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -490,7 +490,7 @@ public class FolderApiTest extends ApiTestHelper {
                     "查询空文件夹子元素应成功, resp: " + resp);
             log.info("查询空文件夹子元素 通过: 返回正常");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 

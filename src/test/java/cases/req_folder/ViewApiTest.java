@@ -28,7 +28,7 @@ public class ViewApiTest extends ApiTestHelper {
                     "视图列表应包含新建的视图: " + viewName);
             log.info("新建视图 通过: [{}] viewId={} on docId={}", viewName, viewId, docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -49,7 +49,7 @@ public class ViewApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("查询视图列表 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -74,7 +74,7 @@ public class ViewApiTest extends ApiTestHelper {
                     "删除视图应成功, resp: " + resp);
             log.info("删除视图 通过: viewId={}", viewId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -92,7 +92,7 @@ public class ViewApiTest extends ApiTestHelper {
                     "空名称应被拦截(视图不应创建), 实际viewId=" + viewId);
             log.info("新建视图-空名称 通过: 被拦截, viewId为空");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -117,7 +117,7 @@ public class ViewApiTest extends ApiTestHelper {
             String viewId = api.addView(docId, longName, "超长名称", "[]");
             log.info("新建视图-超长名称: viewId={} (空=被拦截/失败)", viewId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -150,7 +150,7 @@ public class ViewApiTest extends ApiTestHelper {
             String viewId2 = api.addView(docId, viewName, "重复视图2", "[]");
             log.info("新建视图-重复名称: 第二次addView返回viewId={} (空=被拦截,非空=允许重复)", viewId2);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 

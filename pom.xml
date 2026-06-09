@@ -101,7 +101,7 @@
                 <configuration>
                     <groups>${groups}</groups>
                     <excludedGroups>${excludedGroups}</excludedGroups>
-                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
+                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
                     <forkCount>0</forkCount>
                     <trimStackTrace>false</trimStackTrace>
                     <systemPropertyVariables>

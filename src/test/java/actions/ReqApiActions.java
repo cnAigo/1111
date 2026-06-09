@@ -74,12 +74,13 @@ public class ReqApiActions {
     private static final String ERM_SEARCH_CHILDREN = "/erm/search/searchChildrenListFromProject";
 
     // ── ERM: Export / Import ──
-    private static final String ERM_EXPORT_EXCEL   = "/erm/export/exportExcel";
-    private static final String ERM_EXPORT_WORD    = "/erm/export/exportWord";
-    private static final String ERM_EXPORT_REQIF   = "/erm/export/exportReqIf";
-    private static final String ERM_GET_ATOZ       = "/erm/export/getAtoZParams";
+    private static final String ERM_EXPORT_EXCEL   = "/erm/exportExcelReqSpecification";
+    private static final String ERM_EXPORT_WORD    = "/erm/exportWordReqSpecification";
+    private static final String ERM_EXPORT_REQIF   = "/erm/reqIf/post/exportReqIf";
+    private static final String ERM_GET_ATOZ       = "/erm/reqIf/get/getAllAtozParam";
+    private static final String ERM_GET_TEMPLATES  = "/erm/attr/get/getTemplateNames";
     private static final String ERM_DOWNLOAD_TPL   = "/erm/export/downloadTemplate";
-    private static final String ERM_IMPORT_ATTR    = "/erm/import/getImportAttrList";
+    private static final String ERM_IMPORT_ATTR    = "/erm/import/getAttributes";
     private static final String ERM_IMPORT_EXCEL   = "/erm/import/importReqSpecification";
 
     // ── Common: Project ──
@@ -110,12 +111,12 @@ public class ReqApiActions {
     private static final String SYS_DICT_DATA_TYPE  = "/system/dict/data/type";
 
     // ── Cooperation Area (Project) ──
-    private static final String COOP_ADD    = "/erm/add/addProject";
-    private static final String COOP_UPDATE = "/erm/update/updateProjectInfo";
-    private static final String COOP_DEL    = "/erm/del/delProject";
+    private static final String COOP_ADD    = "/common/add/addProject";
+    private static final String COOP_UPDATE = "/common/update/updateProjectInfo";
+    private static final String COOP_DEL    = "/common/del/delProject";
     private static final String COOP_SEARCH = "/common/search/searchProjectList";
     private static final String COOP_ADD_USER = "/common/update/assignProjectPersonList";
-    private static final String COOP_DEL_USER = "/erm/update/removeProjectPersonList";
+    private static final String COOP_DEL_USER = "/common/update/removeProjectPersonList";
 
     private Runnable reLogin;
 
@@ -338,7 +339,7 @@ public class ReqApiActions {
     // ═══════════════════════ Req Item CRUD ═══════════════════════
 
     public String addReqItem(String projectId, String parentId, String docId) {
-        return addReqItemRaw(projectId, parentId, docId);
+        return extractId(addReqItemRaw(projectId, parentId, docId));
     }
 
     public String addReqItemRaw(String projectId, String parentId, String docId) {
@@ -444,7 +445,22 @@ public class ReqApiActions {
         if (columns != null && !columns.isEmpty()) {
             b.addProperty("viewHeaderValues", columns);
         }
-        return extractId(post(ERM_ADD_VIEW, b));
+        String resp = post(ERM_ADD_VIEW, b);
+        if (!isOk(resp)) return null;
+        // API returns no ID — search the view list to find it by name
+        String listResp = searchViewList(objectId);
+        if (!isOk(listResp)) return null;
+        try {
+            JsonArray data = dataArr(listResp);
+            if (data != null) for (JsonElement e : data) {
+                JsonObject v = e.getAsJsonObject();
+                if (name.equals(str(v, "name"))) {
+                    String vid = str(v, "id", "objectId");
+                    return vid.isEmpty() ? str(v, "viewId") : vid;
+                }
+            }
+        } catch (Exception ex) { log.warn("addView findId failed: {}", ex.getMessage()); }
+        return null;
     }
 
     public String searchViewList(String objectId) {
@@ -458,8 +474,15 @@ public class ReqApiActions {
     // ═══════════════════════ Custom Attribute ═══════════════════════
 
     public String addCustomAttribute(String nameEn, String name, String type, String projectId) {
-        return post(ERM_ATTR_ADD, obj("nameEn", nameEn, "name", name, "type", type,
-            "projectId", projectId, "description", "auto", "isRequired", false));
+        return post(ERM_ATTR_ADD, obj(
+            "nameEn", nameEn, "name", name, "type", type,
+            "projectId", projectId, "description", "auto",
+            "current", "1", "valueRange", "", "defaultValue", "",
+            "isMultiple", false, "businessDomain", "需求管理",
+            "objectType", "req", "id", "", "createTime", "",
+            "creator", "", "modifier", "",
+            "usedColor", "#1e90ff", "isUseDefaultValue", false,
+            "valueRangeMapping", new JsonArray()));
     }
 
     public String[] findCustomAttribute(String nameEn, String projectId) {
@@ -500,17 +523,13 @@ public class ReqApiActions {
 
     public String deleteCustomAttribute(String id) {
         JsonArray arr = new JsonArray(); arr.add(id);
-        return postRaw(ERM_ATTR_DELETE, "{\"ids\": [\"" + id + "\"]}");
+        return postRaw(ERM_ATTR_DELETE, arr.toString());
     }
 
     public String batchDeleteCustomAttributes(String... ids) {
-        StringBuilder sb = new StringBuilder("{\"ids\": [");
-        for (int i = 0; i < ids.length; i++) {
-            if (i > 0) sb.append(",");
-            sb.append("\"").append(ids[i]).append("\"");
-        }
-        sb.append("]}");
-        return postRaw(ERM_ATTR_DELETE, sb.toString());
+        JsonArray arr = new JsonArray();
+        for (String id : ids) arr.add(id);
+        return postRaw(ERM_ATTR_DELETE, arr.toString());
     }
 
     // ═══════════════════════ Version / Trace ═══════════════════════
@@ -553,15 +572,13 @@ public class ReqApiActions {
     // ═══════════════════════ Export / Import ═══════════════════════
 
     public APIResponse exportExcel(String objectId, String templateId) {
-        JsonObject b = obj("objectId", objectId, "templateId", nvl(templateId));
-        return request.post(P + ERM_EXPORT_EXCEL,
-            RequestOptions.create().setHeader("Content-Type", "application/json").setData(b.toString()));
+        return request.get(P + ERM_EXPORT_EXCEL + "?objectId=" + objectId
+            + "&templateType=" + nvl(templateId, "one"));
     }
 
     public APIResponse exportWord(String objectId, String templateId) {
-        JsonObject b = obj("objectId", objectId, "templateId", nvl(templateId));
-        return request.post(P + ERM_EXPORT_WORD,
-            RequestOptions.create().setHeader("Content-Type", "application/json").setData(b.toString()));
+        return request.get(P + ERM_EXPORT_WORD + "?objectId=" + objectId
+            + "&templateType=" + nvl(templateId, "one"));
     }
 
     public String exportReqIf(String payload) {
@@ -570,17 +587,16 @@ public class ReqApiActions {
     }
 
     public String getAllAtozParam(String projectId) {
-        return post(ERM_GET_ATOZ, obj("projectId", projectId));
+        return get(ERM_GET_ATOZ, "projectId", projectId,
+            "businessDomain", "需求管理", "objectType", "req");
     }
 
     public APIResponse downloadImportTemplate(String type) {
-        return request.post(P + ERM_DOWNLOAD_TPL,
-            RequestOptions.create().setHeader("Content-Type", "application/json")
-                .setData(obj("type", type).toString()));
+        return request.get(P + "/erm/downloadImportTemplate?type=" + type);
     }
 
     public String getImportAttributes() {
-        return post(ERM_IMPORT_ATTR, obj());
+        return get(ERM_IMPORT_ATTR);
     }
 
     public String importReqSpecification(String projectId, String parentId, String reqSpecName, String dataJson) {
@@ -601,8 +617,9 @@ public class ReqApiActions {
     // ═══════════════════════ Cooperation Area ═══════════════════════
 
     public String addCooperationArea(String name, String code, String securityLevel, String description) {
-        return post(COOP_ADD, obj("title", name, "name", code,
-            "securityLevel", nvl(securityLevel, "内部"), "description", nvl(description, "auto")));
+        return post(COOP_ADD, obj("objectId", "", "title", name, "name", code,
+            "MBSE_SecretLevel", "1", "lbstype", "", "orderNo", "",
+            "originated", "", "twcCategory", ""));
     }
 
     public String updateCooperationArea(String areaId, String name, String code, String securityLevel, String description) {

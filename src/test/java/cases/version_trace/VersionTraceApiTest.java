@@ -28,7 +28,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("获取版本列表 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -62,7 +62,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("获取访问权限 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -106,7 +106,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
                     "搜索需求追溯应成功, resp: " + resp);
             log.info("搜索需求追溯 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -137,7 +137,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             log.info("搜索追溯-空类型: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -159,7 +159,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
                     "查询变更分析应成功, resp: " + resp);
             log.info("查询变更分析 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -190,7 +190,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             log.info("变更分析-无效版本: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -210,7 +210,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             log.info("变更分析-空版本: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -253,7 +253,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             log.info("搜索追溯-特殊字符: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -284,7 +284,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
                     "检查打开模式应成功, resp: " + resp);
             log.info("检查打开模式 通过: docId={}", docId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -313,7 +313,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             log.info("检查打开模式-空类型: code={}, msg={}",
                     code, root.has("msg") ? root.get("msg").getAsString() : "");
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
@@ -336,7 +336,7 @@ public class VersionTraceApiTest extends ApiTestHelper {
             Assertions.assertNotNull(root.get("data"), "data不应为null");
             log.info("搜索文件夹子项 通过: folderId={}", folderId);
         } finally {
-            if (folderId != null) hardCleanFolder(folderId);
+            if (folderId != null) forceCleanFolder(folderId);
         }
     }
 
