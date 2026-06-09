@@ -5,7 +5,7 @@ const POLL_INTERVAL_MS = 1500;        // 1.5s between polls
 const STALL_THRESHOLD_MS = 300000;    // 5 min no progress → stalled
 const MAX_EXECUTION_MS = 1800000;     // 30 min total → timeout
 const MAX_RETRIES = 2;
-const MAX_LOG = 800;
+const MAX_LOG = 5000;
 
 export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showToast) {
   const [isRunning, setIsRunning] = useState(false);
@@ -123,13 +123,17 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
     const t = rawLine.trim();
     if (!t) return null;
 
+    // Determine log level from the raw line
+    let level = 'INFO';
+    if (/\[ERROR\]|<<< FAILURE|BUILD FAILURE|Exception:|^\s*at\s+|Caused by:/i.test(t)) {
+      level = 'ERROR';
+    } else if (/\[WARN\]/i.test(t)) {
+      level = 'WARN';
+    }
+
     // Filter: skip Maven build noise
     if (t.startsWith('[INFO]') && /---|Building |Scanning|\.jar|classpath|Download(ing|ed)/i.test(t)) return null;
     if (/^\s*\[(INFO|WARNING)\].*(download|maven|plugin|compiler|resources|surefire)/i.test(t)) return null;
-
-    // Filter: skip pure Java stack frames
-    if (/^\s*at\s+[\w.$]+\([\w.]+:\d+\)/.test(t)) return null;
-    if (t.startsWith('... ') && /\d+\s+more/.test(t)) return null;
 
     // Running XxxTest -> class header
     const runningMatch = t.match(/\[INFO\]\s*Running\s+([\w.]+)/);
@@ -137,9 +141,9 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
       const fullName = runningMatch[1];
       const shortName = fullName.includes('.') ? fullName.split('.').pop() : fullName;
       return [
-        { text: '', cls: '' },
-        { text: '▶ ' + shortName, cls: 'text-cyan-400 font-bold' },
-        { text: '  ' + fullName, cls: 'text-slate-600 text-[11px]' },
+        { text: '', cls: '', level },
+        { text: '▶ ' + shortName, cls: 'text-cyan-400 font-bold', level },
+        { text: '  ' + fullName, cls: 'text-slate-600 text-[11px]', level },
       ];
     }
 
@@ -153,11 +157,11 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
 
       if (hasFailures) {
         return [
-          { text: '  ✗ Tests run: ' + total + ', Failures: ' + failures + ', Errors: ' + errors + ', Skipped: ' + skipped + timeStr, cls: 'text-red-400' },
+          { text: '  ✗ Tests run: ' + total + ', Failures: ' + failures + ', Errors: ' + errors + ', Skipped: ' + skipped + timeStr, cls: 'text-red-400', level },
         ];
       } else {
         return [
-          { text: '  ✓ Tests run: ' + total + ', Failures: 0, Errors: 0, Skipped: ' + skipped + timeStr, cls: 'text-emerald-400' },
+          { text: '  ✓ Tests run: ' + total + ', Failures: 0, Errors: 0, Skipped: ' + skipped + timeStr, cls: 'text-emerald-400', level },
         ];
       }
     }
@@ -165,39 +169,47 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
     // Individual test failure
     const singleFailMatch = t.match(/(\w[\w\d_.]*)\s+Time elapsed:\s*([\d.]+)\s*s?\s*<<<\s*(FAILURE|ERROR)!?/);
     if (singleFailMatch) {
-      return [{ text: '  ✗ ' + singleFailMatch[1] + '  (' + singleFailMatch[2] + 's)', cls: 'text-red-400' }];
+      return [{ text: '  ✗ ' + singleFailMatch[1] + '  (' + singleFailMatch[2] + 's)', cls: 'text-red-400', level }];
     }
 
     // Exception messages
     if (/^org\.opentest4j\./.test(t)) {
       const msg = t.replace(/^org\.opentest4j\.\w+:\s*/, '');
-      return [{ text: '    ├ ' + msg, cls: 'text-rose-400' }];
+      return [{ text: '    ├ ' + msg, cls: 'text-rose-400', level }];
     }
     if (/^com\.microsoft\.playwright\./.test(t)) {
       const msg = t.replace(/^com\.microsoft\.playwright\.\w+:\s*/, '');
-      return [{ text: '    ├ ' + msg, cls: 'text-rose-400' }];
+      return [{ text: '    ├ ' + msg, cls: 'text-rose-400', level }];
     }
     if (/^[\w.]+Exception:/.test(t)) {
       const msg = t.replace(/^[\w.]+Exception:\s*/, '');
-      return [{ text: '    ├ ' + msg, cls: 'text-rose-400' }];
+      return [{ text: '    ├ ' + msg, cls: 'text-rose-400', level }];
+    }
+
+    // Java stack frames
+    if (/^\s*at\s+[\w.$]+\([\w.]+:\d+\)/.test(t)) {
+      return [{ text: '    ' + t, cls: 'text-rose-300 text-[11px]', level }];
+    }
+    if (t.startsWith('... ') && /\d+\s+more/.test(t)) {
+      return [{ text: '    ' + t, cls: 'text-rose-300 text-[11px]', level }];
     }
 
     // Caused by:
     if (/^Caused by:/.test(t)) {
-      return [{ text: '    └ ' + t, cls: 'text-rose-300 text-[11px]' }];
+      return [{ text: '    └ ' + t, cls: 'text-rose-300 text-[11px]', level }];
     }
 
     // Error/warn
     if (t.includes('[ERROR]') || t.includes('<<< FAILURE') || t.includes('BUILD FAILURE')) {
-      return [{ text: t.replace(/^\[ERROR\]\s*/, ''), cls: 'text-red-400' }];
+      return [{ text: t.replace(/^\[ERROR\]\s*/, ''), cls: 'text-red-400', level }];
     }
     if (t.includes('[WARN]')) {
-      return [{ text: t.replace(/^\[WARN\]\s*/, ''), cls: 'text-amber-400' }];
+      return [{ text: t.replace(/^\[WARN\]\s*/, ''), cls: 'text-amber-400', level }];
     }
 
     // HTTP 200 -> green
     if (/\b(?:status|code|response|HTTP)\s*[:=]?\s*200\b/i.test(t) || /\b200\s*OK\b/i.test(t)) {
-      return [{ text: t.replace(/^\[INFO\]\s*/, ''), cls: 'text-emerald-400' }];
+      return [{ text: t.replace(/^\[INFO\]\s*/, ''), cls: 'text-emerald-400', level }];
     }
 
     // Info lines
@@ -205,7 +217,7 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
     if (!cleaned || /^BUILD|^----|^Results\s*:|^Tests\s*:|^Final Memory/i.test(cleaned)) return null;
     if (/^\d+\.\d+\s*s$/.test(cleaned)) return null;
 
-    return [{ text: cleaned, cls: 'text-slate-400' }];
+    return [{ text: cleaned, cls: 'text-slate-400', level }];
   }, []);
 
   const pollStatus = useCallback(async (tid) => {

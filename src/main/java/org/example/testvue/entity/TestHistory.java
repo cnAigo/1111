@@ -27,6 +27,19 @@ public class TestHistory {
     private int failed;
     private int skipped;
 
+    /** Real-time progress — updated during execution */
+    private int progress;
+    private int progressTotal;
+    private long durationMs;
+
+    /** Final error message (if any) */
+    @Column(length = 512)
+    private String errorMessage;
+
+    /** Path to the on-disk log file */
+    @Column(length = 512)
+    private String logFilePath;
+
     @Column(columnDefinition = "TEXT")
     private String output;
 
@@ -68,6 +81,16 @@ public class TestHistory {
     public void setFailed(int failed) { this.failed = failed; }
     public int getSkipped() { return skipped; }
     public void setSkipped(int skipped) { this.skipped = skipped; }
+    public int getProgress() { return progress; }
+    public void setProgress(int progress) { this.progress = progress; }
+    public int getProgressTotal() { return progressTotal; }
+    public void setProgressTotal(int progressTotal) { this.progressTotal = progressTotal; }
+    public long getDurationMs() { return durationMs; }
+    public void setDurationMs(long durationMs) { this.durationMs = durationMs; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public String getLogFilePath() { return logFilePath; }
+    public void setLogFilePath(String logFilePath) { this.logFilePath = logFilePath; }
     public String getOutput() { return output; }
     public void setOutput(String output) { this.output = output; }
     public String getResultJson() { return resultJson; }

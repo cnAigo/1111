@@ -1,7 +1,20 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { Terminal as TerminalIcon, Clock, Download, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTestStore } from '../store/useTestStore';
 
-export default function Terminal({ lines, isRunning, elapsedFmt, onClear, logFilter, onFilterChange, runningLabel, pct, progress, progressTotal }) {
+export default function Terminal({ onClear }) {
+  const lines = useTestStore(s => s.terminalLines);
+  const isRunning = useTestStore(s => s.isRunning);
+  const elapsedSec = useTestStore(s => s.elapsedSec);
+  const logFilter = useTestStore(s => s.logFilter);
+  const setLogFilter = useTestStore(s => s.setLogFilter);
+  const runningLabel = useTestStore(s => s.runningLabel);
+  const progress = useTestStore(s => s.progress);
+  const progressTotal = useTestStore(s => s.progressTotal);
+  const fmtElapsed = useTestStore(s => s.fmtElapsed);
+  const pct = useTestStore(s => s.progressTotal > 0 ? Math.round((s.progress / s.progressTotal) * 100) : 0);
+  const elapsedFmt = fmtElapsed(elapsedSec);
+
   const ref = useRef(null);
   const userScrolledRef = useRef(false);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -16,7 +29,9 @@ export default function Terminal({ lines, isRunning, elapsedFmt, onClear, logFil
   };
 
   const filtered = useMemo(() => {
-    let result = logFilter === 'ALL' ? lines : lines.filter(l => (l.text || '').toUpperCase().includes(logFilter));
+    let result = logFilter === 'ALL' ? lines : lines.filter(l =>
+      l.level === logFilter || (l.text || '').toUpperCase().includes(logFilter)
+    );
     if (keyword.trim()) {
       const kw = keyword.toLowerCase();
       result = result.filter(l => (l.text || '').toLowerCase().includes(kw));
@@ -65,7 +80,7 @@ export default function Terminal({ lines, isRunning, elapsedFmt, onClear, logFil
         {['ALL', 'INFO', 'WARN', 'ERROR'].map(f => (
           <button
             key={f}
-            onClick={() => onFilterChange(f)}
+            onClick={() => setLogFilter(f)}
             className={`px-2.5 py-0.5 text-[10px] font-medium rounded transition-colors ${logFilter === f ? 'bg-slate-600 text-slate-200' : 'text-slate-400 hover:text-slate-300'}`}
           >
             {f}

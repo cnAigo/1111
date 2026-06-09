@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { MODULES } from './data/modules';
-import { useTestRun } from './hooks/useTestRun';
-import { useCaseDetails } from './hooks/useCaseDetails';
 import { useConfig } from './hooks/useConfig';
+import { useTestStore } from './store/useTestStore';
+import request from './utils/request';
 import { apiPost, apiDelete } from './utils/api';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -16,23 +17,18 @@ import FailedCases from './pages/FailedCases';
 import SettingsPage from './pages/Settings';
 
 export default function App() {
-  const [activeMenu, setActiveMenu] = useState('dashboard');
+  const navigate = useNavigate();
+  const store = useTestStore();
+
   const [selected, setSelected] = useState(new Set());
-  const [showReport, setShowReport] = useState(false);
-  const [testResults, setTestResults] = useState([]);
-  const [historyList, setHistoryList] = useState([]);
-  const [failedCases, setFailedCases] = useState([]);
-  const [logFilter, setLogFilter] = useState('ALL');
   const [toast, setToast] = useState(null);
   const [cleaning, setCleaning] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
   const [confirm, setConfirm] = useState(null);
   const lastToastRef = useRef({ msg: '', time: 0 });
 
   const showToast = useCallback((msg, type = 'info') => {
-    // Dedup: same message within 5s → skip
     const now = Date.now();
     if (lastToastRef.current.msg === msg && (now - lastToastRef.current.time) < 5000) return;
     lastToastRef.current = { msg, time: now };
@@ -41,19 +37,26 @@ export default function App() {
   }, []);
 
   const config = useConfig(showToast);
-  const tr = useTestRun(config.cfgUrl, config.cfgProjectId, config.cfgUsername, config.cfgPassword, showToast);
-  const caseDetails = useCaseDetails();
 
+  // ── Sync config to store + inject toast + init ──
   useEffect(() => {
-    if (cleaning && (tr.status === 'SUCCESS' || tr.status === 'FAILED' || tr.status === 'STOPPED')) {
+    store.setToastFn(showToast);
+    store.setConfig({ cfgUrl: config.cfgUrl, cfgProjectId: config.cfgProjectId, cfgUsername: config.cfgUsername, cfgPassword: config.cfgPassword });
+  }, [config.cfgUrl, config.cfgProjectId, config.cfgUsername, config.cfgPassword, showToast, store]);
+
+  useEffect(() => { store.init(); }, []);
+
+  // ── Cleaning state sync ──
+  useEffect(() => {
+    if (cleaning && (store.status === 'SUCCESS' || store.status === 'FAILED' || store.status === 'STOPPED')) {
       setCleaning(false);
     }
-  }, [tr.status, cleaning]);
+  }, [store.status, cleaning]);
 
   // Auto-collapse sidebar when running
   useEffect(() => {
-    if (tr.isRunning) setSidebarOpen(false);
-  }, [tr.isRunning]);
+    if (store.isRunning) setSidebarOpen(false);
+  }, [store.isRunning]);
 
   const toggleSelect = useCallback((name, add) => {
     setSelected(prev => {
@@ -64,138 +67,132 @@ export default function App() {
   }, []);
 
   const wrappedStart = useCallback(async () => {
-    if (tr.isRunning) return;
+    if (store.isRunning) return;
     const names = [...selected];
     if (names.length === 0) { showToast('请先选择测试类', 'warning'); return; }
     const label = names.length <= 3 ? names.join(', ') : `${names.length} 个测试类`;
     setConfirm({ msg: `确认执行 ${label} 吗？`, onConfirm: async () => {
       setConfirm(null);
-      setShowReport(false);
-      const tid = await tr.startTest(null, { name: names.join(','), type: 'multi' });
+      store.setShowReport(false);
+      await store.startTest(null, { name: names.join(','), type: 'multi' });
     }});
-  }, [tr, selected, showToast]);
+  }, [store, selected, showToast]);
 
+  // ── Status effects (notifications, title, data loading) ──
   useEffect(() => {
-    if (tr.status === 'SUCCESS' || tr.status === 'FAILED') {
-      setShowReport(true);
-      tr.loadResults(setTestResults);
-      tr.loadHistory(setHistoryList);
-      tr.loadFailedCases(setFailedCases);
+    const st = store.status;
+    if (st === 'SUCCESS' || st === 'FAILED') {
+      store.setShowReport(true);
+      store.loadResults();
+      store.loadHistory();
+      store.loadFailedCases();
+      store.loadCaseDetails();
       if (Notification.permission === 'granted') {
-        new Notification(tr.status === 'SUCCESS' ? '测试通过' : '测试失败', { body: tr.runningLabel });
+        new Notification(st === 'SUCCESS' ? '测试通过' : '测试失败', { body: store.runningLabel });
       } else if (Notification.permission === 'default') {
         Notification.requestPermission();
       }
-      document.title = (tr.status === 'SUCCESS' ? '✓ ' : '✗ ') + 'TaaS Console';
-    } else if (tr.status === 'RUNNING') {
+      document.title = (st === 'SUCCESS' ? '✓ ' : '✗ ') + 'TaaS Console';
+    } else if (st === 'RUNNING') {
       document.title = '▶ TaaS Console';
     } else {
       document.title = 'TaaS Console';
     }
-  }, [tr.status]);
+  }, [store.status]);
 
+  // ── Global API error listener ──
+  useEffect(() => {
+    const onApiError = (e) => showToast(e.detail?.message || '请求失败', 'error');
+    window.addEventListener('api:error', onApiError);
+    return () => window.removeEventListener('api:error', onApiError);
+  }, [showToast]);
+
+  // ── Keyboard shortcuts ──
   useEffect(() => {
     const h = (e) => {
       if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); wrappedStart(); }
-      if (e.key === 'Escape' && tr.isRunning) { e.preventDefault(); tr.stopTest(); }
+      if (e.key === 'Escape' && store.isRunning) { e.preventDefault(); store.stopTest(); }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [wrappedStart, tr.isRunning, tr.stopTest]);
+  }, [wrappedStart, store.isRunning, store.stopTest]);
 
-  const navigate = useCallback((key) => {
-    setActiveMenu(key);
-    if (key === 'results') tr.loadResults(setTestResults);
-    if (key === 'history') tr.loadHistory(setHistoryList);
-    if (key === 'failed') tr.loadFailedCases(setFailedCases);
-    if (key === 'settings') config.setConfigOpen(true);
-  }, [tr, config]);
+  // ── History expand ──
+  const toggleHistoryExpand = useCallback(async (taskId) => {
+    if (expandedHistory[taskId]) { setExpandedHistory(p => { const n={...p}; delete n[taskId]; return n; }); return; }
+    setExpandedHistory(p => ({ ...p, [taskId]: 'loading' }));
+    try {
+      const { data: cases } = await request.get(`/api/test/history/${taskId}/cases`);
+      const h = store.historyList.find(x => x.taskId === taskId);
+      setExpandedHistory(p => ({ ...p, [taskId]: { cases, label: h?.label || '' } }));
+    } catch { setExpandedHistory(p => { const n={...p}; delete n[taskId]; return n; }); }
+  }, [expandedHistory, store.historyList]);
 
-  // Expose navigate for child pages
-  useEffect(() => { window.__taasNavigate = navigate; return () => delete window.__taasNavigate; }, [navigate]);
+  // ── Rerun & cleanup actions ──
+  const onRerunClass = useCallback(async (className) => {
+    navigate('/');
+    try {
+      const { cfgUrl, cfgProjectId, cfgUsername, cfgPassword } = store;
+      const r = await apiPost('/api/test/run', { url: cfgUrl, projectId: cfgProjectId, username: cfgUsername, password: cfgPassword, testClass: className });
+      if (r.taskId) showToast('已启动: ' + className, 'info');
+    } catch (e) { showToast('重跑失败: ' + e.message, 'error'); }
+  }, [store, showToast, navigate]);
+
+  const onRerun = useCallback(async (tid) => {
+    if (store.isRunning) { showToast('已有任务在运行中', 'warning'); return; }
+    setConfirm({ msg: '确认重跑该任务的失败用例？', onConfirm: async () => {
+      setConfirm(null); navigate('/');
+      try {
+        const d = await apiPost('/api/test/rerun-failed', { taskId: tid });
+        if (d.taskId) { store.resumeTask(d.taskId, d.label || 'Rerun'); showToast('已下发重跑', 'info'); }
+      } catch (e) { showToast('重跑失败: ' + e.message, 'error'); }
+    }});
+  }, [store, showToast, navigate]);
+
+  const onDeleteHistory = useCallback(async (tid) => {
+    setConfirm({ msg: '确认删除该历史记录？', onConfirm: async () => {
+      setConfirm(null);
+      try {
+        await apiDelete(`/api/test/history/${tid}`);
+        store.loadHistory();
+        showToast('已删除', 'info');
+      } catch (e) { showToast('删除失败: ' + e.message, 'error'); }
+    }});
+  }, [showToast, store]);
 
   const onCleanupAction = useCallback(async () => {
     setConfirm({ msg: '确认清理环境？这将删除所有测试数据！', onConfirm: async () => {
       setConfirm(null);
       setCleaning(true);
-      setActiveMenu('dashboard');
-      tr.setTerminalLines([]);
+      navigate('/');
+      store.setTerminalLines([]);
       try {
-        await fetch('/api/test/cleanup', { method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId: config.cfgProjectId, url: config.cfgUrl, username: config.cfgUsername, password: config.cfgPassword })
-        });
-        tr.resumeTask('cleanup', '清理环境');
+        const { cfgProjectId, cfgUrl, cfgUsername, cfgPassword } = store;
+        await request.post('/api/test/cleanup',
+          { projectId: cfgProjectId, url: cfgUrl, username: cfgUsername, password: cfgPassword });
+        store.resumeTask('cleanup', '清理环境');
       } catch (e) { showToast('清理失败: ' + e.message, 'error'); setCleaning(false); }
     }});
-  }, [config, tr, showToast]);
-
-  const toggleHistoryExpand = useCallback(async (taskId) => {
-    if (expandedHistory[taskId]) { setExpandedHistory(p => { const n={...p}; delete n[taskId]; return n; }); return; }
-    setExpandedHistory(p => ({ ...p, [taskId]: 'loading' }));
-    try {
-      const r = await fetch(`/api/test/history/${taskId}/cases`);
-      const cases = await r.json();
-      const h = historyList.find(x => x.taskId === taskId);
-      setExpandedHistory(p => ({ ...p, [taskId]: { cases, label: h?.label || '' } }));
-    } catch { setExpandedHistory(p => { const n={...p}; delete n[taskId]; return n; }); }
-  }, [expandedHistory, historyList]);
-
-  const onRerunClass = useCallback(async (className) => {
-    setActiveMenu('dashboard');
-    try {
-      const body = { url: config.cfgUrl, projectId: config.cfgProjectId, username: config.cfgUsername, password: config.cfgPassword, testClass: className };
-      const r = await apiPost('/api/test/run', body);
-      if (r.taskId) showToast('已启动: ' + className, 'info');
-    } catch (e) { showToast('重跑失败: ' + e.message, 'error'); }
-  }, [config, showToast]);
-
-  const onRerun = useCallback(async (tid) => {
-    if (tr.isRunning) { showToast('已有任务在运行中', 'warning'); return; }
-    setConfirm({ msg: '确认重跑该任务的失败用例？', onConfirm: async () => {
-      setConfirm(null); setActiveMenu('dashboard');
-      try {
-        const d = await apiPost('/api/test/rerun-failed', { taskId: tid });
-        if (d.taskId) { tr.resumeTask(d.taskId, d.label || 'Rerun'); showToast('已下发重跑', 'info'); }
-      } catch (e) { showToast('重跑失败: ' + e.message, 'error'); }
-    }});
-  }, [tr, showToast]);
-
-  const onDeleteHistory = useCallback(async (tid) => {
-    setConfirm({ msg: '确认删除该历史记录？', onConfirm: async () => {
-      setConfirm(null);
-      try { await apiDelete(`/api/test/history/${tid}`); setHistoryList(p => p.filter(h => h.taskId !== tid)); showToast('已删除', 'info'); }
-      catch (e) { showToast('删除失败: ' + e.message, 'error'); }
-    }});
-  }, [showToast]);
-
-  const page = activeMenu === 'settings' ? 'settings' : activeMenu === 'results' ? 'results'
-    : activeMenu === 'history' ? 'history' : activeMenu === 'failed' ? 'failed' : 'dashboard';
+  }, [store, showToast, navigate]);
 
   return (
     <div className="h-screen flex overflow-hidden bg-slate-50">
-      <Sidebar activeMenu={activeMenu} onNavigate={navigate} status={tr.status} failedCount={failedCases.length}
-        timeDisplay={tr.durationFmt} isRunning={tr.isRunning} elapsedFmt={tr.fmtElapsed(tr.elapsedSec)} cleaning={cleaning}
-        open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
+      <Sidebar cleaning={cleaning} open={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header activeMenu={activeMenu} isRunning={tr.isRunning} runningLabel={tr.runningLabel}
-          onOpenSettings={() => { config.setConfigOpen(true); config.loadConfigs(); }} />
+        <Header onOpenSettings={() => { config.setConfigOpen(true); config.loadConfigs(); }} />
         <div className="flex-1 flex flex-col min-h-0 bg-slate-50/80">
-          {page === 'dashboard' && (
-            <Dashboard terminalLines={tr.terminalLines} isRunning={tr.isRunning} elapsedSec={tr.elapsedSec}
-              showReport={showReport} status={tr.status} logFilter={logFilter} onFilterChange={setLogFilter}
-              onClear={() => { tr.setTerminalLines([]); tr.appendLog('— Console cleared —', 'text-slate-500'); }} pct={tr.pct} progress={tr.progress} progressTotal={tr.progressTotal}
-              fmtElapsed={tr.fmtElapsed} runningLabel={tr.runningLabel} onCloseReport={() => setShowReport(false)}
-              testResults={testResults} historyList={historyList}
-              modules={MODULES} selected={selected} onToggle={toggleSelect}
-              onStart={wrappedStart} onStop={tr.stopTest} onCleanup={onCleanupAction}
-              cleaning={cleaning} selectedCount={selected.size} caseDetails={caseDetails.details} />
-          )}
-          {page === 'results' && <Results testResults={testResults} caseDetails={caseDetails.details} />}
-          {page === 'history' && <History historyList={historyList} onRerun={onRerun} onDelete={onDeleteHistory}
-            expandedHistory={expandedHistory} onToggleExpand={toggleHistoryExpand} caseDetails={caseDetails.details} />}
-          {page === 'failed' && <FailedCases failedCases={failedCases} onRerunClass={onRerunClass} caseDetails={caseDetails.details} />}
-          {page === 'settings' && <SettingsPage onOpen={() => { config.setConfigOpen(true); config.loadConfigs(); }} />}
+          <Routes>
+            <Route path="/" element={
+              <Dashboard modules={MODULES} selected={selected} onToggle={toggleSelect}
+                onStart={wrappedStart} onStop={() => store.stopTest()} onCleanup={onCleanupAction}
+                cleaning={cleaning} selectedCount={selected.size} />
+            } />
+            <Route path="/results" element={<Results />} />
+            <Route path="/history" element={<History onRerun={onRerun} onDelete={onDeleteHistory}
+              expandedHistory={expandedHistory} onToggleExpand={toggleHistoryExpand} />} />
+            <Route path="/failed" element={<FailedCases onRerunClass={onRerunClass} />} />
+            <Route path="/settings" element={<SettingsPage onOpen={() => { config.setConfigOpen(true); config.loadConfigs(); }} />} />
+          </Routes>
         </div>
       </div>
       <ConfigModal open={config.configOpen} onClose={() => config.setConfigOpen(false)}

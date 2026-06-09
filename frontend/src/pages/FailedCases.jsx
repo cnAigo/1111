@@ -1,14 +1,19 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Shield, Copy, RefreshCw, ChevronDown, Download,
   Eye, ChevronRight, FileText
 } from 'lucide-react';
 import { MODULES } from '../data/modules';
 import StatusBadge from '../components/StatusBadge';
+import { useTestStore } from '../store/useTestStore';
 import JSONViewer from '../components/JSONViewer';
 import { parseReason, errorPreview } from '../utils/parseReason';
 
-export default function FailedCases({ failedCases, onRerunClass }) {
+export default function FailedCases({ onRerunClass }) {
+  const navigate = useNavigate();
+  const failedCases = useTestStore(s => s.failedCases);
+  const caseDetails = useTestStore(s => s.caseDetails);
   const [dedupe, setDedupe] = useState(false);
   const [expanded, setExpanded] = useState({});
   const [moduleFilter, setModuleFilter] = useState('');
@@ -68,7 +73,7 @@ export default function FailedCases({ failedCases, onRerunClass }) {
           </div>
           <p className="text-sm text-slate-500">无失败用例</p>
           <p className="text-xs text-slate-400 mt-1">继续保持！</p>
-          <button onClick={() => window.__taasNavigate?.('dashboard')}
+          <button onClick={() => navigate('/')}
             className="mt-4 px-4 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
             前往执行大厅
           </button>

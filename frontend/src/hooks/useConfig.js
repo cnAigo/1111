@@ -1,21 +1,19 @@
 import { useState, useCallback } from 'react';
+import request from '../utils/request';
 
 export function useConfig(showToast) {
   const [configOpen, setConfigOpen] = useState(false);
-  const [cfgUrl, setCfgUrl] = useState('https://192.168.6.171:8088');
-  const [cfgProjectId, setCfgProjectId] = useState('2058851105448046592');
-  const [cfgUsername, setCfgUsername] = useState('admin');
-  const [cfgPassword, setCfgPassword] = useState('Aa123456');
+  const [cfgUrl, setCfgUrl] = useState(import.meta.env.VITE_DEFAULT_API_URL || '');
+  const [cfgProjectId, setCfgProjectId] = useState(import.meta.env.VITE_DEFAULT_PROJECT_ID || '');
+  const [cfgUsername, setCfgUsername] = useState(import.meta.env.VITE_DEFAULT_USERNAME || '');
+  const [cfgPassword, setCfgPassword] = useState(import.meta.env.VITE_DEFAULT_PASSWORD || '');
   const [pwVisible, setPwVisible] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState([]);
   const [configFormName, setConfigFormName] = useState('');
 
-  const apiPost = async (url, body) => {
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    return r.json();
-  };
-  const apiGet = async (url) => { const r = await fetch(url); return r.json(); };
-  const apiDelete = async (url) => { const r = await fetch(url, { method: 'DELETE' }); return r.json(); };
+  const apiPost = async (url, body) => { const { data } = await request.post(url, body); return data; };
+  const apiGet = async (url) => { const { data } = await request.get(url); return data; };
+  const apiDelete = async (url) => { const { data } = await request.delete(url); return data; };
 
   const loadConfigs = useCallback(async () => {
     try { const d = await apiGet('/api/test/configs'); if (Array.isArray(d)) setSavedConfigs(d); }

@@ -3,16 +3,27 @@ import { Play, Square, Trash2, Loader2, Terminal, BarChart3, Layers, CheckSquare
 import TerminalPanel from '../components/Terminal';
 import ReportPanel from '../components/ReportPanel';
 import TestTree from '../components/TestTree';
+import { useTestStore } from '../store/useTestStore';
 
 export default function Dashboard({
-  terminalLines, isRunning, elapsedSec, showReport, status, logFilter,
-  onFilterChange, onClear, pct, progress, progressTotal, fmtElapsed, runningLabel,
-  onCloseReport, testResults, historyList,
   modules, selected, onToggle,
-  onStart, onStop, onCleanup, cleaning, selectedCount, caseDetails,
+  onStart, onStop, onCleanup, cleaning, selectedCount
 }) {
   const [activeTab, setActiveTab] = useState('terminal');
   const [treeOpen, setTreeOpen] = useState(true);
+
+  const isRunning = useTestStore(s => s.isRunning);
+  const showReport = useTestStore(s => s.showReport);
+  const status = useTestStore(s => s.status);
+  const testResults = useTestStore(s => s.testResults);
+  const historyList = useTestStore(s => s.historyList);
+  const caseDetails = useTestStore(s => s.caseDetails);
+  const setShowReport = useTestStore(s => s.setShowReport);
+  const clearTerminal = () => {
+    const store = useTestStore.getState();
+    store.setTerminalLines([]);
+    store.appendLog('— Console cleared —', 'text-slate-500');
+  };
 
   const hasReport = showReport && testResults && testResults.length > 0;
   const selectedNames = [...selected];
@@ -175,14 +186,10 @@ export default function Dashboard({
         {/* Tab content */}
         <div className="flex-1 flex flex-col min-h-0">
           {activeTab === 'terminal' && (
-            <TerminalPanel
-              lines={terminalLines} isRunning={isRunning} elapsedFmt={fmtElapsed(elapsedSec)}
-              logFilter={logFilter} onFilterChange={onFilterChange} onClear={onClear}
-              runningLabel={runningLabel} pct={pct} progress={progress} progressTotal={progressTotal}
-            />
+            <TerminalPanel onClear={clearTerminal} />
           )}
           {activeTab === 'report' && hasReport && (
-            <ReportPanel results={testResults} status={status} onClose={onCloseReport} historyList={historyList} caseDetails={caseDetails} />
+            <ReportPanel results={testResults} status={status} onClose={() => setShowReport(false)} historyList={historyList} caseDetails={caseDetails} />
           )}
           {activeTab === 'report' && !hasReport && (
             <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-xl border border-slate-200 shadow-sm text-slate-400">

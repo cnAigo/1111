@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Clock, RefreshCw, Trash2, ChevronRight, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import ProgressBar from '../components/ProgressBar';
+import { useTestStore } from '../store/useTestStore';
 
 function HistoryStats({ historyList }) {
   const stats = useMemo(() => {
@@ -68,7 +70,10 @@ function HistoryStats({ historyList }) {
   );
 }
 
-export default function History({ historyList, onRerun, onDelete, expandedHistory, onToggleExpand, caseDetails }) {
+export default function History({ onRerun, onDelete, expandedHistory, onToggleExpand }) {
+  const navigate = useNavigate();
+  const historyList = useTestStore(s => s.historyList);
+  const caseDetails = useTestStore(s => s.caseDetails);
   return (
     <div className="flex-1 overflow-y-auto mx-8 mb-6">
       {/* Stats overview */}
@@ -83,7 +88,7 @@ export default function History({ historyList, onRerun, onDelete, expandedHistor
             </div>
             <p className="text-sm text-slate-500">暂无历史</p>
             <p className="text-xs text-slate-400 mt-1">执行测试后记录将显示在这里</p>
-            <button onClick={() => window.__taasNavigate?.('dashboard')}
+            <button onClick={() => navigate('/')}
               className="mt-4 px-4 py-2 rounded-lg text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
               前往执行大厅
             </button>

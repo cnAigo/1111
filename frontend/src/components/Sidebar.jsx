@@ -1,7 +1,18 @@
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Terminal, CheckCircle2, History, Shield, Settings, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MENU_ITEMS, STATUS_CFG } from '../data/modules';
+import { useTestStore } from '../store/useTestStore';
 
-export default function Sidebar({ activeMenu, onNavigate, status, failedCount, timeDisplay, isRunning, elapsedFmt, cleaning, open, onToggle }) {
+export default function Sidebar({ cleaning, open, onToggle }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const status = useTestStore(s => s.status);
+  const failedCount = useTestStore(s => s.failedCases.length);
+  const timeDisplay = useTestStore(s => s.durationFmt);
+  const isRunning = useTestStore(s => s.isRunning);
+  const elapsedSec = useTestStore(s => s.elapsedSec);
+  const fmtElapsed = useTestStore(s => s.fmtElapsed);
+
   const icons = { dashboard: Terminal, results: CheckCircle2, history: History, failed: Shield, settings: Settings };
   const sc = STATUS_CFG[status] || STATUS_CFG.IDLE;
 
@@ -32,9 +43,9 @@ export default function Sidebar({ activeMenu, onNavigate, status, failedCount, t
         <nav className={`flex-1 py-2 space-y-0.5 ${open ? 'px-3' : 'px-1.5'}`}>
           {MENU_ITEMS.map(item => {
             const Icon = icons[item.key];
-            const isActive = activeMenu === item.key;
+            const isActive = location.pathname === item.path || (item.path === '/' && location.pathname === '/');
             return (
-              <button key={item.key} onClick={() => onNavigate(item.key)}
+              <button key={item.key} onClick={() => navigate(item.path)}
                 title={!open ? item.label : undefined}
                 className={`w-full flex items-center gap-3 rounded-xl text-[13px] font-medium transition-all duration-200 group whitespace-nowrap ${
                   open ? 'px-3.5 py-2.5' : 'px-0 py-2.5 justify-center'
@@ -64,7 +75,7 @@ export default function Sidebar({ activeMenu, onNavigate, status, failedCount, t
         <div className={`border-t border-slate-100 flex items-center gap-2 text-[11px] whitespace-nowrap ${open ? 'px-4 py-2.5' : 'px-0 py-2.5 justify-center'}`}>
           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cleaning ? 'bg-orange-500 animate-pulse' : status === 'RUNNING' ? 'bg-amber-500 animate-pulse' : status === 'SUCCESS' ? 'bg-emerald-500' : status === 'FAILED' ? 'bg-red-500' : 'bg-slate-300'}`} />
           {open && <span className="text-slate-500">{cleaning ? '清理中' : sc.text}</span>}
-          {open && <span className="ml-auto font-mono text-slate-400 text-[10px]">{isRunning ? elapsedFmt : timeDisplay}</span>}
+          {open && <span className="ml-auto font-mono text-slate-400 text-[10px]">{isRunning ? fmtElapsed(elapsedSec) : timeDisplay}</span>}
         </div>
       </aside>
     </>
