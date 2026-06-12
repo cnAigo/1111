@@ -7,6 +7,7 @@ import org.example.testvue.repository.TestConfigRepository;
 import org.example.testvue.entity.TestCaseDetail;
 import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
+import org.example.testvue.service.MavenTestRunner;
 import org.example.testvue.service.SurefireParser;
 import org.example.testvue.service.TestExecutionService;
 import org.example.testvue.util.AESUtils;
@@ -23,17 +24,20 @@ import java.util.stream.Collectors;
 public class TestRunnerController {
 
     private final TestExecutionService execService;
+    private final MavenTestRunner mavenRunner;
     private final TestHistoryRepository historyRepo;
     private final TestConfigRepository configRepo;
     private final TestCaseDetailRepository caseDetailRepo;
     private final AESUtils aes;
 
     public TestRunnerController(TestExecutionService execService,
+                                MavenTestRunner mavenRunner,
                                 TestHistoryRepository historyRepo,
                                 TestConfigRepository configRepo,
                                 TestCaseDetailRepository caseDetailRepo,
                                 AESUtils aes) {
         this.execService = execService;
+        this.mavenRunner = mavenRunner;
         this.historyRepo = historyRepo;
         this.configRepo = configRepo;
         this.caseDetailRepo = caseDetailRepo;
@@ -90,6 +94,14 @@ public class TestRunnerController {
         r.rerunClassNames = new ArrayList<>(failedClasses);
         r.rerunClassCount = failedClasses.size();
         return r.toMap();
+    }
+
+    // ── Estimate ──
+
+    @PostMapping("/estimate")
+    public Map<String, Object> estimate(@RequestBody TestRunRequest req) {
+        long ms = mavenRunner.calculateExpectedMs(req);
+        return Map.of("estimatedMs", ms, "estimatedFmt", MavenTestRunner.fmt(ms));
     }
 
     // ── Status ──
@@ -159,10 +171,33 @@ public class TestRunnerController {
         return Collections.emptyList();
     }
 
+    @GetMapping("/history/{taskId}/log")
+    public Map<String, Object> getHistoryLog(@PathVariable String taskId) {
+        TestHistory h = historyRepo.findByTaskId(taskId);
+        String log;
+        if (h != null && h.getLogFilePath() != null) {
+            // Read from disk log file
+            log = MavenTestRunner.readLog(taskId);
+            if (log.isEmpty()) log = h.getOutput();
+        } else if (h != null) {
+            log = h.getOutput();
+        } else {
+            log = "";
+        }
+        return Map.of("code", 200, "taskId", taskId, "output", log != null ? log : "");
+    }
+
     @Transactional
     @DeleteMapping("/history/{taskId}")
     public Map<String, Object> deleteHistory(@PathVariable String taskId) {
         historyRepo.deleteByTaskId(taskId);
+        return Map.of("code", 200, "msg", "ok");
+    }
+
+    @Transactional
+    @DeleteMapping("/history")
+    public Map<String, Object> deleteAllHistory() {
+        historyRepo.deleteAll();
         return Map.of("code", 200, "msg", "ok");
     }
 
@@ -276,10 +311,13 @@ public class TestRunnerController {
     @PostMapping("/cleanup")
     public Map<String, Object> cleanup(@RequestBody(required = false) Map<String, String> body) {
         String projectId = body != null ? body.getOrDefault("projectId", "") : "";
-        execService.startCleanup(projectId,
+        String tid = execService.startCleanup(projectId,
             body != null ? body.getOrDefault("url", "") : "",
             body != null ? body.getOrDefault("username", "") : "",
             body != null ? body.getOrDefault("password", "") : "");
-        return Map.of("code", 200, "msg", "ok");
+        if (tid == null) {
+            ApiResponse r = new ApiResponse(); r.code = 409; r.msg = "已有任务在执行中"; return r.toMap();
+        }
+        return Map.of("code", 200, "msg", "ok", "taskId", tid);
     }
 }

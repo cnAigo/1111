@@ -62,6 +62,7 @@ public class Dtos {
         public int progressTotal;
         public String errorMessage;
         public String output;
+        public long estimatedMs;
 
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -73,6 +74,7 @@ public class Dtos {
             m.put("durationFmt", durationFmt != null ? durationFmt : "");
             m.put("progress", progress);
             m.put("progressTotal", progressTotal);
+            m.put("estimatedMs", estimatedMs);
             m.put("errorMessage", errorMessage != null ? errorMessage : "");
             m.put("output", output != null ? output : "");
             return m;
@@ -122,5 +124,6 @@ public class Dtos {
         public String time;
         public List<TestCaseResult> cases;
         public List<String> warnings;
+        public String log;  // per-class execution log output
     }
 }

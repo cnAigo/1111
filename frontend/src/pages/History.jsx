@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, XCircle, Clock, RefreshCw, Trash2, ChevronRight, TrendingUp, Activity, BarChart3 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, RefreshCw, Trash2, ChevronRight, TrendingUp, Activity, BarChart3, FileText } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import ProgressBar from '../components/ProgressBar';
 import { useTestStore } from '../store/useTestStore';
+import request from '../utils/request';
 
 function HistoryStats({ historyList }) {
   const stats = useMemo(() => {
@@ -74,6 +75,19 @@ export default function History({ onRerun, onDelete, expandedHistory, onToggleEx
   const navigate = useNavigate();
   const historyList = useTestStore(s => s.historyList);
   const caseDetails = useTestStore(s => s.caseDetails);
+  const [logData, setLogData] = useState({}); // taskId → log string
+
+  const fetchLog = async (taskId) => {
+    if (logData[taskId]) { setLogData(p => { const n = {...p}; delete n[taskId]; return n; }); return; }
+    setLogData(p => ({ ...p, [taskId]: 'loading' }));
+    try {
+      const { data } = await request.get(`/api/test/history/${taskId}/log`);
+      setLogData(p => ({ ...p, [taskId]: data.output || '(无日志)' }));
+    } catch {
+      setLogData(p => ({ ...p, [taskId]: '加载日志失败' }));
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto mx-8 mb-6">
       {/* Stats overview */}
@@ -177,10 +191,22 @@ export default function History({ onRerun, onDelete, expandedHistory, onToggleEx
                                       <span className="text-[10px]">{cls.cases?.length || 0} cases</span>
                                     </span>
                                   </summary>
+                                  {cls.log && (
+                                    <details className="mx-2 my-1 bg-slate-900/90 rounded">
+                                      <summary className="px-3 py-1 text-[10px] text-emerald-400 font-mono cursor-pointer hover:text-emerald-300">
+                                        执行日志 ({cls.log.split('\n').filter(Boolean).length} lines)
+                                      </summary>
+                                      <pre className="px-3 pb-2 text-[10px] text-slate-300 font-mono leading-relaxed max-h-[200px] overflow-auto whitespace-pre-wrap break-all">{cls.log}</pre>
+                                    </details>
+                                  )}
                                   <div className="mt-1 border border-slate-100 rounded-lg overflow-hidden bg-white">
                                     {(cls.cases || []).map(c => {
+                                      const rawName = c.name.replace(/[()]/g, '');
                                       const detail = caseDetails
-                                        ? Object.values(caseDetails).flat().find(d => d.caseId && c.name.includes(d.caseId))
+                                        ? Object.values(caseDetails).flat().find(d =>
+                                            (d.javaMethod && rawName === d.javaMethod)
+                                            || (d.caseId && rawName.includes(d.caseId.replace(/[-_]/g, '')))
+                                            || (d.caseId && rawName.includes(d.caseId)))
                                         : null;
                                       return (
                                         <div
@@ -215,6 +241,25 @@ export default function History({ onRerun, onDelete, expandedHistory, onToggleEx
                           ) : (
                             <p className="text-xs text-slate-400">无详细用例数据</p>
                           )}
+
+                          {/* View execution log */}
+                          <div className="mt-2 pt-2 border-t border-slate-200">
+                            <button
+                              onClick={() => fetchLog(h.taskId)}
+                              className="flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-blue-600 transition-colors"
+                            >
+                              <FileText size={12} />
+                              {logData[h.taskId] ? '收起日志' : '查看执行日志'}
+                            </button>
+                            {logData[h.taskId] && logData[h.taskId] !== 'loading' && (
+                              <pre className="mt-2 text-[10px] font-mono text-slate-400 bg-slate-900 rounded-lg p-3 max-h-[300px] overflow-auto whitespace-pre-wrap break-all leading-relaxed">
+                                {logData[h.taskId]}
+                              </pre>
+                            )}
+                            {logData[h.taskId] === 'loading' && (
+                              <p className="mt-1 text-[11px] text-slate-400">加载中...</p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

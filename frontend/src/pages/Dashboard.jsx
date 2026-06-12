@@ -28,7 +28,10 @@ export default function Dashboard({
   const hasReport = showReport && testResults && testResults.length > 0;
   const selectedNames = [...selected];
 
-  // Auto-switch to report tab when test completes
+  // Auto-switch to terminal + collapse sidebar when test starts, to report when done
+  useEffect(() => {
+    if (isRunning) { setActiveTab('terminal'); setTreeOpen(false); }
+  }, [isRunning]);
   useEffect(() => {
     if (hasReport) setActiveTab('report');
   }, [hasReport]);

@@ -7,6 +7,7 @@ import com.microsoft.playwright.options.RequestOptions;
 import config.TestConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.nio.file.Path;
 import java.util.UUID;
 
 public class ReqApiActions {
@@ -79,9 +80,61 @@ public class ReqApiActions {
     private static final String ERM_EXPORT_REQIF   = "/erm/reqIf/post/exportReqIf";
     private static final String ERM_GET_ATOZ       = "/erm/reqIf/get/getAllAtozParam";
     private static final String ERM_GET_TEMPLATES  = "/erm/attr/get/getTemplateNames";
-    private static final String ERM_DOWNLOAD_TPL   = "/erm/export/downloadTemplate";
+    private static final String ERM_DOWNLOAD_TPL   = "/erm/downloadReqImportTemplate";
     private static final String ERM_IMPORT_ATTR    = "/erm/import/getAttributes";
     private static final String ERM_IMPORT_EXCEL   = "/erm/import/importReqSpecification";
+
+    // ── ReqIf Import ──
+    private static final String ERM_IMPORT_REQIF_DOORS = "/erm/reqIf/get/getAllDoorsParam";
+    private static final String ERM_IMPORT_REQIF       = "/erm/reqIf/add/importReqIfFile";
+
+    /** Step 1: upload ReqIf file to get door attribute mapping. */
+    public String getDoorsParam(Path filePath) {
+        APIResponse resp = request.post(P + ERM_IMPORT_REQIF_DOORS,
+            RequestOptions.create()
+                .setMultipart(
+                    com.microsoft.playwright.options.FormData.create()
+                        .set("file", filePath)));
+        return resp.text();
+    }
+
+    /** Step 2: import ReqIf file with mapping. */
+    public String importReqIfFile(String projectId, String parentId, String parentType,
+                                   Path filePath, String mappingAttrJson) {
+        APIResponse resp = request.post(P + ERM_IMPORT_REQIF,
+            RequestOptions.create()
+                .setMultipart(
+                    com.microsoft.playwright.options.FormData.create()
+                        .set("file", filePath)
+                        .set("parentId", parentId)
+                        .set("parentType", parentType)
+                        .set("projectId", projectId)
+                        .set("mappingAttrJson", mappingAttrJson)));
+        return resp.text();
+    }
+
+    // ── ReqIf Template ──
+    private static final String ERM_INSERT_TEMPLATE = "/erm/attr/post/insertTemplate";
+
+    public String insertTemplate(String templateName, String projectId, String describe, String atozParamResp) {
+        JsonArray atozArr;
+        try {
+            JsonObject root = JsonParser.parseString(atozParamResp).getAsJsonObject();
+            atozArr = root.getAsJsonArray("data");
+        } catch (Exception e) {
+            atozArr = new JsonArray();
+        }
+        JsonObject body = new JsonObject();
+        body.addProperty("templateName", templateName);
+        body.addProperty("projectId", projectId);
+        body.addProperty("templateDescribe", describe != null ? describe : "");
+        body.add("attrTemplateInfoRspVoList", atozArr);
+        return postRaw(ERM_INSERT_TEMPLATE, body);
+    }
+
+    public String getTemplateNames(String projectId) {
+        return get(ERM_GET_TEMPLATES, "projectId", projectId);
+    }
 
     // ── Common: Project ──
     private static final String COMMON_SEARCH_PROJECT     = "/common/search/searchProjectList";
@@ -113,7 +166,7 @@ public class ReqApiActions {
     // ── Cooperation Area (Project) ──
     private static final String COOP_ADD    = "/common/add/addProject";
     private static final String COOP_UPDATE = "/common/update/updateProjectInfo";
-    private static final String COOP_DEL    = "/common/del/delProject";
+    private static final String COOP_DEL    = "/common/delete/delProject";
     private static final String COOP_SEARCH = "/common/search/searchProjectList";
     private static final String COOP_ADD_USER = "/common/update/assignProjectPersonList";
     private static final String COOP_DEL_USER = "/common/update/removeProjectPersonList";
@@ -178,8 +231,18 @@ public class ReqApiActions {
         return post(ERM_DEL_FOLDER, b);
     }
 
+    public String deleteFolderCleanup(String folderId, String projectId, String type) {
+        JsonObject b = obj("objectId", folderId, "parentId", projectId,
+            "parentType", type != null ? type : "project");
+        return postCleanup(ERM_DEL_FOLDER, b);
+    }
+
     public String deleteFolder(String folderId, String projectId) {
         return deleteFolder(folderId, projectId, null);
+    }
+
+    public String deleteDocumentCleanup(String docId, String parentId) {
+        return postCleanup(ERM_DEL_DOC, obj("objectId", docId, "parentId", parentId, "parentType", "reqSpeFolder"));
     }
 
     public String recoverFolder(String folderId, String parentId) {
@@ -188,14 +251,49 @@ public class ReqApiActions {
             "parentType", "reqSpeFolder"));
     }
 
+    /** 递归清理文件夹内所有子节点（从下往上），再删自身。 */
+    public void cleanFolderTree(String folderId, String projectId) {
+        try {
+            String treeResp = getTree(folderId, projectId);
+            JsonObject root = JsonParser.parseString(treeResp).getAsJsonObject();
+            if (root.has("data") && !root.get("data").isJsonNull()) {
+                cleanRecursive(root.getAsJsonArray("data"), folderId);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void cleanRecursive(JsonArray items, String parentId) {
+        for (JsonElement el : items) {
+            JsonObject node = el.getAsJsonObject();
+            String type = str(node, "type");
+            String id   = str(node, "objectId", "id");
+            // 先递归清孙子（子文件夹的 parentType 一定是 reqSpeFolder）
+            if (node.has("children") && !node.get("children").isJsonNull()) {
+                cleanRecursive(node.getAsJsonArray("children"), id);
+            }
+            // 再删自身
+            if (id.isBlank()) continue;
+            try {
+                if ("reqSpeFolder".equals(type)) {
+                    deleteFolderCleanup(id, parentId, "reqSpeFolder");
+                    deleteFolderCleanup(id, parentId, "project");
+                    forceCleanFolder(id);
+                } else if ("reqSpe".equals(type)) {
+                    deleteDocumentCleanup(id, parentId);
+                    forceCleanDocument(id, parentId);
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
     public String forceCleanFolder(String folderId) {
-        post(ERM_RECOVER_FOLDER, obj("objectId", folderId, "parentId", folderId));
-        return post(ERM_CLEAN_FOLDER, obj("objectId", folderId));
+        postCleanup(ERM_RECOVER_FOLDER, obj("objectId", folderId, "parentId", folderId));
+        return postCleanup(ERM_CLEAN_FOLDER, obj("objectId", folderId));
     }
 
     public void forceCleanDocument(String docId, String parentId) {
-        post(ERM_RECOVER_DOC, obj("objectId", docId, "parentId", parentId, "parentType", PARENT_TYPE_FOLDER));
-        post(ERM_CLEAN_DOC, obj("objectId", docId, "parentId", parentId, "parentType", PARENT_TYPE_FOLDER));
+        postCleanup(ERM_RECOVER_DOC, obj("objectId", docId, "parentId", parentId, "parentType", PARENT_TYPE_FOLDER));
+        postCleanup(ERM_CLEAN_DOC, obj("objectId", docId, "parentId", parentId, "parentType", PARENT_TYPE_FOLDER));
     }
 
     public void cleanFolderByName(String projectId, String targetName) {
@@ -229,24 +327,33 @@ public class ReqApiActions {
         String folderId = targetNode.get("objectId").getAsString();
         log.info("锁定目标文件夹 ID: {}", folderId);
         if (targetNode.has("children") && !targetNode.get("children").isJsonNull()) {
-            JsonArray children = targetNode.getAsJsonArray("children");
-            for (JsonElement childEl : children) {
-                JsonObject child = childEl.getAsJsonObject();
-                String childId = child.get("objectId").getAsString();
-                String childTitle = child.get("title").getAsString();
-                String childType = child.get("type").getAsString();
-                if (PARENT_TYPE_FOLDER.equals(childType)) {
-                    deleteFolder(childId, folderId, PARENT_TYPE_FOLDER);
-                    forceCleanFolder(childId);
-                    log.info("  已清理子文件夹: {}", childTitle);
-                } else if ("reqSpe".equals(childType)) {
-                    deleteDocument(childId, folderId);
-                    forceCleanDocument(childId, folderId);
-                    log.info("  已清理需求规格: {}", childTitle);
-                }
-            }
+            cleanChildrenBottomUp(targetNode.getAsJsonArray("children"));
         }
         log.info("\n====== 清理环境结束 ======");
+    }
+
+    /** Recursively clean children bottom-up (grandchildren first) to avoid "下有子级" errors. */
+    private void cleanChildrenBottomUp(JsonArray children) {
+        for (JsonElement childEl : children) {
+            JsonObject child = childEl.getAsJsonObject();
+            String childType = child.get("type").getAsString();
+            // Recurse into grandchildren first
+            if (child.has("children") && !child.get("children").isJsonNull()) {
+                cleanChildrenBottomUp(child.getAsJsonArray("children"));
+            }
+            // Then delete this node
+            String childId = child.get("objectId").getAsString();
+            String childTitle = child.get("title").getAsString();
+            if (PARENT_TYPE_FOLDER.equals(childType)) {
+                deleteFolder(childId, childId, PARENT_TYPE_FOLDER);
+                forceCleanFolder(childId);
+                log.info("  已清理子文件夹: {}", childTitle);
+            } else if ("reqSpe".equals(childType)) {
+                deleteDocument(childId, childId);
+                forceCleanDocument(childId, childId);
+                log.info("  已清理需求规格: {}", childTitle);
+            }
+        }
     }
 
     public void sweepByPrefix(String projectId, String prefix) {
@@ -269,8 +376,12 @@ public class ReqApiActions {
                 sweepNodes(node.getAsJsonArray("children"), objectId, prefix);
             if (!objectId.isBlank() && title.startsWith(prefix)) {
                 try {
-                    if ("reqSpe".equals(type)) { deleteDocument(objectId, parentId); forceCleanDocument(objectId, parentId); }
-                    else if (PARENT_TYPE_FOLDER.equals(type)) { deleteFolder(objectId, parentId, PARENT_TYPE_FOLDER); forceCleanFolder(objectId); }
+                    if ("reqSpe".equals(type)) { deleteDocumentCleanup(objectId, parentId); forceCleanDocument(objectId, parentId); }
+                    else if (PARENT_TYPE_FOLDER.equals(type)) {
+                        deleteFolderCleanup(objectId, parentId, PARENT_TYPE_FOLDER);
+                        deleteFolderCleanup(objectId, parentId, "project");
+                        forceCleanFolder(objectId);
+                    }
                 } catch (Exception ignored) {}
             }
         }
@@ -299,9 +410,13 @@ public class ReqApiActions {
                 sweepAllNodes(node.getAsJsonArray("children"), objectId);
             if (!objectId.isBlank() && !"project".equals(type)) {
                 try {
-                    if ("reqSpe".equals(type)) { deleteDocument(objectId, parentId); forceCleanDocument(objectId, parentId); }
+                    if ("reqSpe".equals(type)) { deleteDocumentCleanup(objectId, parentId); forceCleanDocument(objectId, parentId); }
                     else if ("req".equals(type)) { deleteReqItem(objectId); }
-                    else if (PARENT_TYPE_FOLDER.equals(type)) { deleteFolder(objectId, parentId, PARENT_TYPE_FOLDER); forceCleanFolder(objectId); }
+                    else if (PARENT_TYPE_FOLDER.equals(type)) {
+                        deleteFolderCleanup(objectId, parentId, PARENT_TYPE_FOLDER);
+                        deleteFolderCleanup(objectId, parentId, "project");
+                        forceCleanFolder(objectId);
+                    }
                 } catch (Exception ignored) {}
             }
         }
@@ -364,12 +479,19 @@ public class ReqApiActions {
         return post(ERM_SEARCH_CHILD_REQ, obj("objectId", objectId));
     }
 
-    public String updateReqList(String docId, String json) {
+    public String updateReqList(String reqSpeId, String json) {
         JsonObject b = new JsonObject();
-        b.addProperty("docId", docId);
-        b.add("reqList", JsonParser.parseString(json));
-        return request.post(P + ERM_UPDATE_REQ_LIST,
-            RequestOptions.create().setHeader("Content-Type", "application/json").setData(b.toString())).text();
+        b.addProperty("reqSpeId", reqSpeId);
+        JsonElement parsed;
+        try {
+            parsed = JsonParser.parseString(json);
+        } catch (com.google.gson.JsonSyntaxException e) {
+            // 负向测试可能传非法JSON，直接作为字符串发过去
+            b.addProperty("reqList", json);
+            return post(ERM_UPDATE_REQ_LIST, b);
+        }
+        b.add("reqList", parsed);
+        return post(ERM_UPDATE_REQ_LIST, b);
     }
 
     public String editDescription(String projectId, String docId, String folderId, String description) {
@@ -408,7 +530,7 @@ public class ReqApiActions {
     }
 
     public String findNodeIdByTitle(String parentId, String title) {
-        String resp = getTree(parentId, "");
+        String resp = getTree(parentId, parentId);
         try {
             JsonArray arr = dataArr(resp);
             if (arr != null) for (JsonElement e : arr) {
@@ -592,16 +714,70 @@ public class ReqApiActions {
     }
 
     public APIResponse downloadImportTemplate(String type) {
-        return request.get(P + "/erm/downloadImportTemplate?type=" + type);
+        return request.get(P + ERM_DOWNLOAD_TPL + "?templateType=" + type);
     }
 
     public String getImportAttributes() {
-        return get(ERM_IMPORT_ATTR);
+        long t0 = System.currentTimeMillis();
+        APIResponse resp = request.get(P + ERM_IMPORT_ATTR);
+        String text = resp.text();
+        long ms = System.currentTimeMillis() - t0;
+        log.info("API GET {} → HTTP {} ({}ms)", ERM_IMPORT_ATTR, resp.status(), ms);
+        return text;
     }
 
     public String importReqSpecification(String projectId, String parentId, String reqSpecName, String dataJson) {
         return post(ERM_IMPORT_EXCEL,
             obj("projectId", projectId, "reqSpeParentId", parentId, "reqSpeName", reqSpecName, "dataJson", dataJson));
+    }
+
+    /** Excel import with real payload format (from HAR trace). */
+    public String importExcelData(String projectId, String parentId, String specName, String dataJson) {
+        JsonArray dataArr = JsonParser.parseString(dataJson).getAsJsonArray();
+        JsonObject body = new JsonObject();
+        body.addProperty("projectId", projectId);
+        body.addProperty("parentId", parentId);
+        body.addProperty("type", "reqSpeFolder");
+        body.addProperty("reqSpecName", specName);
+        body.add("data", dataArr);
+        return postRaw(ERM_IMPORT_EXCEL, body);
+    }
+
+    private String postRaw(String path, JsonObject body) {
+        return request.post(P + path,
+            RequestOptions.create().setHeader("Content-Type", "application/json").setData(body.toString())).text();
+    }
+
+    // Word import endpoint (multipart upload)
+    private static final String ERM_IMPORT_DOCX  = "/erm/import/importReqSpecDocx";
+
+    /** Upload a Word docx into a folder. Returns full response text. */
+    public String importWordDocx(String projectId, String parentId, String specName, Path filePath) {
+        long t0 = System.currentTimeMillis();
+        APIResponse resp = request.post(P + ERM_IMPORT_DOCX,
+            RequestOptions.create()
+                .setMultipart(
+                    com.microsoft.playwright.options.FormData.create()
+                        .set("file", filePath)
+                        .set("parentId", parentId)
+                        .set("projectId", projectId)
+                        .set("reqSpecName", specName)
+                        .set("type", "reqSpeFolder")));
+        String text = resp.text();
+        long ms = System.currentTimeMillis() - t0;
+        log.info("API POST {} (file={}) → HTTP {} ({}ms) body={}", ERM_IMPORT_DOCX,
+            filePath.getFileName(), resp.status(), ms, text);
+        return text;
+    }
+
+    /** ReqIf export — actual payload format from browser HAR trace. */
+    public String exportReqIfByBranch(String projectId, String specBranchId, String specName) {
+        String payload = """
+            {"reqSpeBranchIds":["%s"],"businessDomain":"需求管理","objectType":"req",\
+            "projectId":"%s","atozReqSpecName":"%s","mappingAttrs":[]}\
+            """.formatted(specBranchId, projectId, specName);
+        return request.post(P + ERM_EXPORT_REQIF,
+            RequestOptions.create().setHeader("Content-Type", "application/json").setData(payload)).text();
     }
 
     public String importUser(String json) {
@@ -628,7 +804,46 @@ public class ReqApiActions {
     }
 
     public String deleteCooperationArea(String areaId) {
-        return post(COOP_DEL, obj("objectId", areaId));
+        JsonArray arr = new JsonArray();
+        JsonObject item = new JsonObject();
+        item.addProperty("objectId", areaId);
+        arr.add(item);
+        return postRaw(COOP_DEL, arr.toString());
+    }
+
+    /** 删除所有合作区，保留名称/编号匹配 keepNames 的。返回删除数量。 */
+    public int cleanAllCooperationAreasExcept(String... keepNames) {
+        String resp = searchCooperationAreaList("", "");
+        JsonArray data = dataArr(resp);
+        if (data == null || data.isEmpty()) return 0;
+        int deleted = 0;
+        for (JsonElement el : data) {
+            JsonObject item = el.getAsJsonObject();
+            String name = str(item, "name");
+            String title = str(item, "title");
+            String objectId = str(item, "objectId");
+            if (objectId.isEmpty()) continue;
+            boolean keep = false;
+            for (String k : keepNames) {
+                if (k.equals(name) || k.equals(title)) { keep = true; break; }
+            }
+            if (keep) {
+                log.info("保留合作区: name={}, title={}", name, title);
+                continue;
+            }
+            try {
+                String delResp = deleteCooperationArea(objectId);
+                if (delResp.contains("\"code\":200")) {
+                    deleted++;
+                } else {
+                    log.warn("删除合作区失败: name={}, title={}, resp={}", name, title, truncate(delResp, 100));
+                }
+            } catch (Exception e) {
+                log.warn("删除合作区异常: name={}, title={}, err={}", name, title, e.getMessage());
+            }
+        }
+        log.info("合作区清理完成: 删除{}个, 保留{}个", deleted, data.size() - deleted);
+        return deleted;
     }
 
     public String searchCooperationAreaList(String keyword, String projectId) {
@@ -828,6 +1043,27 @@ public class ReqApiActions {
             log.info("API POST {} → HTTP {} ({}ms)", path, code, ms);
         }
         return text;
+    }
+
+    /** Like doPost but treats code:500 as info — for cleanup calls where business rejections are expected. */
+    private String doPostCleanup(String path, JsonObject body) {
+        long t0 = System.currentTimeMillis();
+        APIResponse resp = request.post(P + path,
+            RequestOptions.create().setHeader("Content-Type", "application/json").setData(body.toString()));
+        String text = resp.text();
+        long ms = System.currentTimeMillis() - t0;
+        int code = resp.status();
+        if (code >= 400) {
+            log.warn("API POST {} → HTTP {} ({}ms) body: {}", path, code, ms, truncate(text, 200));
+        } else if (text.contains("\"code\":200")) {
+            log.info("API POST {} → HTTP {} ({}ms)", path, code, ms);
+        }
+        // code:500 during cleanup is expected, silently skipped
+        return text;
+    }
+
+    private String postCleanup(String path, JsonObject body) {
+        return doPostCleanup(path, body);
     }
 
     private String postRaw(String path, String json) {

@@ -8,9 +8,11 @@ import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -29,6 +31,8 @@ public class TestExecutionService {
     private final TestConfigRepository configRepo;
     private final MavenTestRunner mavenRunner;
     private final CleanupService cleanupService;
+    private final WebSocketSessionManager wsManager;
+    private final ApplicationContext appCtx;
 
     /** Shared stop flag for the currently running task */
     private final AtomicBoolean stopFlag = new AtomicBoolean(false);
@@ -37,12 +41,27 @@ public class TestExecutionService {
                                 TestCaseDetailRepository caseDetailRepo,
                                 TestConfigRepository configRepo,
                                 MavenTestRunner mavenRunner,
-                                CleanupService cleanupService) {
+                                CleanupService cleanupService,
+                                WebSocketSessionManager wsManager,
+                                ApplicationContext appCtx) {
         this.historyRepo = historyRepo;
         this.caseDetailRepo = caseDetailRepo;
         this.configRepo = configRepo;
         this.mavenRunner = mavenRunner;
         this.cleanupService = cleanupService;
+        this.wsManager = wsManager;
+        this.appCtx = appCtx;
+    }
+
+    @PostConstruct
+    public void fixStaleRunningStatus() {
+        TestHistory h = historyRepo.findTopByOrderByCreateTimeDesc();
+        if (h != null && "RUNNING".equals(h.getStatus())) {
+            h.setStatus("STOPPED");
+            h.setErrorMessage("服务重启，任务中断");
+            historyRepo.save(h);
+            LOG.info("Fixed stale RUNNING status for taskId={}", h.getTaskId());
+        }
     }
 
     // ── Status helpers (read from DB) ──
@@ -74,6 +93,7 @@ public class TestExecutionService {
             s.durationFmt = h.getDurationFmt() != null ? h.getDurationFmt() : "";
             s.progress = h.getProgress();
             s.progressTotal = h.getProgressTotal();
+            s.estimatedMs = h.getEstimatedMs();
             s.errorMessage = h.getErrorMessage() != null ? h.getErrorMessage() : "";
             s.taskId = h.getTaskId();
             // Read log from disk file (not from memory buffer)
@@ -96,14 +116,17 @@ public class TestExecutionService {
         int total = mavenRunner.countTestCases(req);
         if (total <= 0) total = 1;
 
+        long estimatedMs = mavenRunner.calculateExpectedMs(req);
+
         // Persist initial record immediately
         TestHistory h = TestHistory.of(tid, lb, "RUNNING", "", 0, 0, 0, "", "");
         h.setProgress(0);
         h.setProgressTotal(total);
+        h.setEstimatedMs(estimatedMs);
         historyRepo.save(h);
 
-        // Execute asynchronously via thread pool
-        executeRunAsync(tid, req, lb);
+        // Execute asynchronously via thread pool (must go through proxy for @Async to work)
+        appCtx.getBean(TestExecutionService.class).executeRunAsync(tid, req, lb);
         return tid;
     }
 
@@ -123,15 +146,21 @@ public class TestExecutionService {
         }
     }
 
-    public void stopRun() {
+    public synchronized void stopRun() {
         stopFlag.set(true);
-        mavenRunner.kill();
         cleanupService.stop();
+
+        // Kill Maven process forcefully, retry if needed
+        for (int i = 0; i < 3; i++) {
+            mavenRunner.kill();
+            try { Thread.sleep(500); } catch (InterruptedException e) { break; }
+            if (!mavenRunner.isProcessAlive()) break;
+        }
 
         // Update DB
         TestHistory h = historyRepo.findByTaskId(getCurrentTaskId());
         if (h != null && "RUNNING".equals(h.getStatus())) {
-            h.setStatus("IDLE");
+            h.setStatus("STOPPED");
             h.setErrorMessage("手动停止");
             historyRepo.save(h);
         }
@@ -139,9 +168,9 @@ public class TestExecutionService {
 
     // ── Cleanup ──
 
-    public synchronized void startCleanup(String projectId, String url,
-                                           String username, String password) {
-        if (isRunning()) return;
+    public synchronized String startCleanup(String projectId, String url,
+                                            String username, String password) {
+        if (isRunning()) return null;
         stopFlag.set(false);
 
         String pId = resolveProjectId(projectId);
@@ -154,12 +183,13 @@ public class TestExecutionService {
         h.setProgress(0); h.setProgressTotal(0);
         historyRepo.save(h);
 
-        runCleanupAsync(base, user, pass, pId, tid);
+        appCtx.getBean(TestExecutionService.class).runCleanupAsync(base, user, pass, pId, tid);
+        return tid;
     }
 
     @Async("testExecutor")
     public void runCleanupAsync(String base, String user, String pass, String projectId, String tid) {
-        cleanupService.startCleanup(base, user, pass, projectId);
+        cleanupService.startCleanup(base, user, pass, projectId, tid, wsManager);
 
         // Poll until done
         while (cleanupService.isRunning()) {

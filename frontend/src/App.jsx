@@ -40,9 +40,10 @@ export default function App() {
 
   // ── Sync config to store + inject toast + init ──
   useEffect(() => {
-    store.setToastFn(showToast);
-    store.setConfig({ cfgUrl: config.cfgUrl, cfgProjectId: config.cfgProjectId, cfgUsername: config.cfgUsername, cfgPassword: config.cfgPassword });
-  }, [config.cfgUrl, config.cfgProjectId, config.cfgUsername, config.cfgPassword, showToast, store]);
+    useTestStore.getState().setToastFn(showToast);
+    useTestStore.getState().setConfig({ cfgUrl: config.cfgUrl, cfgProjectId: config.cfgProjectId, cfgUsername: config.cfgUsername, cfgPassword: config.cfgPassword });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.cfgUrl, config.cfgProjectId, config.cfgUsername, config.cfgPassword, showToast]);
 
   useEffect(() => { store.init(); }, []);
 
@@ -71,9 +72,18 @@ export default function App() {
     const names = [...selected];
     if (names.length === 0) { showToast('请先选择测试类', 'warning'); return; }
     const label = names.length <= 3 ? names.join(', ') : `${names.length} 个测试类`;
-    setConfirm({ msg: `确认执行 ${label} 吗？`, onConfirm: async () => {
+
+    // Query estimated time from backend
+    let estimatedMs = 0;
+    try {
+      const { data } = await request.post('/api/test/estimate', { testClass: names.join(',') });
+      estimatedMs = data.estimatedMs || 0;
+    } catch {}
+
+    setConfirm({ msg: `确认执行 ${label} 吗？`, estimatedMs, onConfirm: async () => {
       setConfirm(null);
       store.setShowReport(false);
+      setSelected(new Set());
       await store.startTest(null, { name: names.join(','), type: 'multi' });
     }});
   }, [store, selected, showToast]);
@@ -166,11 +176,22 @@ export default function App() {
       setCleaning(true);
       navigate('/');
       store.setTerminalLines([]);
+      const append = (t, c) => store.appendLog(t, c);
+      append('╔══════════════════════════════════════════════════╗', 'text-slate-500');
+      append('║  开始环境清理…                                  ║', 'text-orange-400');
+      append('╚══════════════════════════════════════════════════╝', 'text-slate-500');
+      append('', '');
       try {
         const { cfgProjectId, cfgUrl, cfgUsername, cfgPassword } = store;
-        await request.post('/api/test/cleanup',
+        const { data } = await request.post('/api/test/cleanup',
           { projectId: cfgProjectId, url: cfgUrl, username: cfgUsername, password: cfgPassword });
-        store.resumeTask('cleanup', '清理环境');
+        if (data.code === 409) {
+          append('[WARN] ' + data.msg, 'text-amber-400');
+          showToast(data.msg, 'warning');
+          setCleaning(false);
+          return;
+        }
+        store._connectCleanupWs(data.taskId, () => setCleaning(false));
       } catch (e) { showToast('清理失败: ' + e.message, 'error'); setCleaning(false); }
     }});
   }, [store, showToast, navigate]);

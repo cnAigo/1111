@@ -21,6 +21,9 @@ function ClassCard({ cls, expanded, onToggle, caseDetails, filter, getVisibleCas
   const actuallyOpen = expanded[cls.className] !== undefined ? expanded[cls.className] : (failed > 0 || hasWarnings);
   const allCases = cls.cases || [];
   const visibleCases = getVisibleCases(allCases, filter);
+  const [caseExpanded, setCaseExpanded] = useState({});
+
+  const toggleCase = (name) => setCaseExpanded(p => ({ ...p, [name]: !p[name] }));
 
   return (
     <div className="mb-2 border border-slate-100 rounded-lg overflow-hidden">
@@ -65,22 +68,35 @@ function ClassCard({ cls, expanded, onToggle, caseDetails, filter, getVisibleCas
               </div>
             </div>
           )}
+          {cls.log && (
+            <details open className="px-4 py-2 bg-slate-900/90 border-b border-slate-700">
+              <summary className="text-[10px] text-emerald-400 font-mono cursor-pointer hover:text-emerald-300 select-none">
+                执行日志 ({cls.log.split('\n').filter(Boolean).length} lines)
+              </summary>
+              <pre className="mt-1.5 text-[10px] text-slate-300 font-mono leading-relaxed max-h-[260px] overflow-auto whitespace-pre-wrap break-all">{cls.log}</pre>
+            </details>
+          )}
           {visibleCases.map(c => {
             const clsDetails = caseDetails && caseDetails[cls.className] ? caseDetails[cls.className] : [];
-            const detail = clsDetails.find(d => d.javaMethod && c.name === d.javaMethod)
-                        || clsDetails.find(d => d.caseId && c.name.includes(d.caseId));
+            const rawName = c.name.replace(/[()]/g, '');
+            const detail = clsDetails.find(d => d.javaMethod && rawName === d.javaMethod)
+                        || clsDetails.find(d => d.caseId && rawName.includes(d.caseId.replace(/[-_]/g, '')))
+                        || clsDetails.find(d => d.caseId && rawName.includes(d.caseId));
             const parsed = c.reason ? parseReason(c.reason) : null;
+            const isCaseOpen = caseExpanded[c.name] !== undefined ? caseExpanded[c.name] : (c.status === 'FAIL');
             return (
-              <div key={c.name} className={`px-4 py-2.5 text-[13px] border-b border-slate-50 last:border-0 ${c.status === 'FAIL' ? 'bg-red-50/20' : c.status === 'SKIP' ? 'bg-amber-50/20' : ''}`}>
-                <div className="flex items-center gap-3">
+              <div key={c.name} className={`border-b border-slate-50 last:border-0 ${c.status === 'FAIL' ? 'bg-red-50/20' : c.status === 'SKIP' ? 'bg-amber-50/20' : 'bg-emerald-50/10'}`}>
+                <button onClick={() => toggleCase(c.name)}
+                  className="w-full px-4 py-2 text-[13px] text-left flex items-center gap-3 cursor-pointer hover:bg-slate-50/50">
+                  <ChevronRight size={10} className={`text-slate-400 transition-transform flex-shrink-0 ${isCaseOpen ? 'rotate-90' : ''}`} />
                   <StatusBadge variant={c.status === 'PASS' ? 'pass' : c.status === 'SKIP' ? 'skip' : 'fail'}>
                     {c.status}
                   </StatusBadge>
                   <span className="font-mono text-xs flex-1 text-slate-700">{c.name}</span>
                   <span className="text-slate-400 text-xs ml-auto flex items-center gap-0.5"><Clock size={10} />{c.time || '0'}s</span>
-                </div>
-                {detail && (
-                  <div className="mt-1.5 space-y-1">
+                </button>
+                {isCaseOpen && detail && (
+                  <div className="px-4 pb-2 ml-5 space-y-0.5 pl-2 border-l-2 border-emerald-300">
                     <div className="flex items-center gap-2 flex-wrap">
                       {detail.caseType && (
                         <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-slate-100 text-slate-600">{detail.caseType}</span>
@@ -92,13 +108,13 @@ function ClassCard({ cls, expanded, onToggle, caseDetails, filter, getVisibleCas
                         <span className="text-[9px] text-slate-400 font-mono truncate max-w-[300px]">{detail.apiUrl}</span>
                       )}
                     </div>
-                    {detail.title && <p className="text-[10px] text-slate-600 font-medium">{detail.title}</p>}
-                    {detail.steps && <p className="text-[10px] text-slate-400">步骤: {detail.steps}</p>}
+                    {detail.title && <p className="text-[10px] text-slate-600 font-medium">标题: {detail.title}</p>}
+                    {detail.steps && <p className="text-[10px] text-slate-500">步骤: {detail.steps}</p>}
                     {detail.expected && <p className="text-[10px] text-slate-500">预期: {detail.expected}</p>}
                   </div>
                 )}
-                {parsed && (
-                  <div className="mt-1.5 space-y-1.5">
+                {isCaseOpen && parsed && (
+                  <div className="px-4 pb-2 ml-5 space-y-1.5">
                     {parsed.assertions.length > 0 && (
                       <div className="flex items-center gap-2 flex-wrap">
                         {parsed.assertions.map((a, j) => (
@@ -123,10 +139,13 @@ function ClassCard({ cls, expanded, onToggle, caseDetails, filter, getVisibleCas
                     )}
                   </div>
                 )}
-                {c.reason && !parsed && (
-                  <div className="mt-1 text-[11px] text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-md max-w-full break-all leading-relaxed">
+                {isCaseOpen && c.reason && !parsed && (
+                  <div className="px-4 pb-2 ml-5 text-[11px] text-slate-600 bg-slate-100 mx-4 rounded-md max-w-full break-all leading-relaxed">
                     {c.reason.split('\n')[0]}
                   </div>
+                )}
+                {isCaseOpen && !detail && !parsed && !c.reason && (
+                  <div className="px-4 pb-2 ml-5 text-[10px] text-slate-500">测试通过</div>
                 )}
               </div>
             );

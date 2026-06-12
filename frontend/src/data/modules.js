@@ -9,6 +9,8 @@ export const MODULES = [
     { name:'ViewApiTest', type:'api', desc:'需求视图新建/查询/删除' },
     { name:'ReqSpecUITest', type:'ui', desc:'需求规格交互：新建/重命名/删除' },
     { name:'RequirementFolderUITest', type:'ui', desc:'需求文件夹UI：CRUD全流程 (22 tests)' },
+    { name:'ReqSpecTest', type:'ui', desc:'需求规格UI：右键新建/文件夹下新增' },
+    { name:'RequirementTest', type:'ui', desc:'需求条目综合UI：文件夹/子文件夹CRUD' },
     { name:'ReqTest', type:'ui', desc:'需求条目全流程：CRUD/属性编辑' },
   ]},
   { tag:'AttributeModule', label:'自定义属性', icon:'🏷️', color:'#3b82f6', classes:[
@@ -16,26 +18,34 @@ export const MODULES = [
     { name:'BasicAttributeTest', type:'ui', desc:'基础属性页交互' },
     { name:'EnumAttributeTest', type:'ui', desc:'枚举属性下拉/搜索/多选' },
     { name:'AttributeUITest', type:'ui', desc:'综合UI：完整属性生命周期' },
+    { name:'SpecialAttributeTest', type:'ui', desc:'特殊属性UI：整数/浮点数校验与保存' },
   ]},
   { tag:'IOModule', label:'导入导出', icon:'📤', color:'#10b981', classes:[
     { name:'ExportImportApiTest', type:'api', desc:'Excel/Word/ReqIf导出+模板下载+导入校验' },
     { name:'ExportImportUITest', type:'ui', desc:'导入导出交互：文件选择→导出/导入→下载/验证' },
     { name:'WordImportTest', type:'ui', desc:'Word导入专项' },
+    { name:'ExportTest', type:'ui', desc:'导出UI：Excel/Word/ReqIF格式导出' },
+    { name:'ReqExportFullTest', type:'ui', desc:'需求规格导出UI：右键/表头多格式导出' },
   ]},
   { tag:'CollaborationModule', label:'协作区', icon:'🤝', color:'#8b5cf6', classes:[
     { name:'CooperationAreaApiTest', type:'api', desc:'合作区全生命周期+用户管理+安全校验' },
     { name:'ProjectPersonApiTest', type:'api', desc:'项目人员分配/部门树' },
     { name:'CooperationAreaUITest', type:'ui', desc:'合作区管理界面交互' },
+    { name:'CollaborativeEditTest', type:'ui', desc:'协同编辑UI：共享/独占模式编辑' },
+    { name:'ReviewProcessTest', type:'ui', desc:'评审流程UI：流程检索与定义' },
   ]},
   { tag:'VersionTraceModule', label:'版本追溯', icon:'🔀', color:'#ec4899', classes:[
     { name:'VersionTraceApiTest', type:'api', desc:'版本列表/访问权限/追溯/变更分析' },
     { name:'UnlockApiTest', type:'api', desc:'解锁/强制解锁' },
+    { name:'UnlockUITest', type:'ui', desc:'解锁UI：释放/保留编辑及负向校验' },
+    { name:'VersionTraceTest', type:'ui', desc:'版本追溯UI：升版/切换版本/基线列表' },
     { name:'VersionTraceUITest', type:'ui', desc:'版本历史/差异对比UI' },
   ]},
   { tag:'UserManageModule', label:'用户管理', icon:'👥', color:'#f97316', classes:[
     { name:'UserManageApiTest', type:'api', desc:'用户CRUD+搜索/删除/重置密码/导入' },
     { name:'SystemUserApiTest', type:'api', desc:'系统用户完整CRUD+分页/导出' },
     { name:'SystemPostApiTest', type:'api', desc:'岗位管理CRUD+导出' },
+    { name:'SystemSettingsUITest', type:'ui', desc:'系统设置UI：视图管理/属性发布' },
     { name:'UserManagementUITest', type:'ui', desc:'用户管理界面交互' },
   ]},
   { tag:'IndicatorModule', label:'指标管理', icon:'📊', color:'#6366f1', classes:[
@@ -44,9 +54,13 @@ export const MODULES = [
     { name:'ParameterApiTest', type:'api', desc:'指标参数CRUD+物理方案' },
   ]},
   { tag:'CommonModule', label:'通用测试', icon:'🛡️', color:'#94a3b8', classes:[
+    { name:'EnvironmentCleanupTest', type:'api', desc:'环境清理：目录树/规格/指标/合作区' },
+    { name:'XssSecurityTest', type:'api', desc:'XSS安全：23种payload×6字段批量检测' },
     { name:'CommonUITest', type:'ui', desc:'通用UI基准：登录/导航/面包屑' },
     { name:'CommonCompatibilityTest', type:'ui', desc:'浏览器兼容矩阵' },
     { name:'CommonSecurityTest', type:'ui', desc:'安全基线扫描' },
+    { name:'CommonPerformanceTest', type:'ui', desc:'性能基准：导入导出速度测试' },
+    { name:'OtherFunctionsTest', type:'ui', desc:'其他功能UI：合作区管理/回收站等' },
   ]},
 ];
 

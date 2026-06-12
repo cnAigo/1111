@@ -31,6 +31,8 @@ public class TestHistory {
     private int progress;
     private int progressTotal;
     private long durationMs;
+    /** Estimated total duration based on historical averages (ms), 0 = no data yet */
+    private long estimatedMs;
 
     /** Final error message (if any) */
     @Column(length = 512)
@@ -40,10 +42,10 @@ public class TestHistory {
     @Column(length = 512)
     private String logFilePath;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String output;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String resultJson;
 
     private LocalDateTime createTime;
@@ -87,6 +89,8 @@ public class TestHistory {
     public void setProgressTotal(int progressTotal) { this.progressTotal = progressTotal; }
     public long getDurationMs() { return durationMs; }
     public void setDurationMs(long durationMs) { this.durationMs = durationMs; }
+    public long getEstimatedMs() { return estimatedMs; }
+    public void setEstimatedMs(long estimatedMs) { this.estimatedMs = estimatedMs; }
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     public String getLogFilePath() { return logFilePath; }

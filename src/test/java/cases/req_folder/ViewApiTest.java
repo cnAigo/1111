@@ -88,7 +88,7 @@ public class ViewApiTest extends ApiTestHelper {
             folderId = doc[2];
 
             String viewId = api.addView(docId, "", "空名称视图", "[]");
-            Assertions.assertTrue(viewId.isEmpty(),
+            Assertions.assertTrue(viewId == null || viewId.isEmpty(),
                     "空名称应被拦截(视图不应创建), 实际viewId=" + viewId);
             log.info("新建视图-空名称 通过: 被拦截, viewId为空");
         } finally {

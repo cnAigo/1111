@@ -2,12 +2,13 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, Copy, RefreshCw, ChevronDown, Download,
-  Eye, ChevronRight, FileText
+  Eye, ChevronRight, FileText, Bug, Trash2
 } from 'lucide-react';
 import { MODULES } from '../data/modules';
 import StatusBadge from '../components/StatusBadge';
 import { useTestStore } from '../store/useTestStore';
 import JSONViewer from '../components/JSONViewer';
+import request from '../utils/request';
 import { parseReason, errorPreview } from '../utils/parseReason';
 
 export default function FailedCases({ onRerunClass }) {
@@ -17,6 +18,19 @@ export default function FailedCases({ onRerunClass }) {
   const [dedupe, setDedupe] = useState(false);
   const [expanded, setExpanded] = useState({});
   const [moduleFilter, setModuleFilter] = useState('');
+  const [suspected, setSuspected] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('taas_suspected_defects') || '[]')); }
+    catch { return new Set(); }
+  });
+
+  const toggleSuspected = (key) => {
+    setSuspected(prev => {
+      const next = new Set(prev);
+      prev.has(key) ? next.delete(key) : next.add(key);
+      localStorage.setItem('taas_suspected_defects', JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   const moduleOptions = useMemo(() => {
     const tags = [...new Set(failedCases.map(fc => {
@@ -85,6 +99,11 @@ export default function FailedCases({ onRerunClass }) {
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-[11px] font-medium text-slate-600">
               {displayed.length} 条
             </span>
+            {suspected.size > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-[11px] font-medium text-red-600">
+                <Bug size={10} /> {suspected.size} 疑似缺陷
+              </span>
+            )}
             <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer select-none">
               <input type="checkbox" checked={dedupe} onChange={e => setDedupe(e.target.checked)} className="w-3 h-3 rounded accent-blue-500" /> 去重
             </label>
@@ -98,6 +117,10 @@ export default function FailedCases({ onRerunClass }) {
                 <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
             )}
+            <button onClick={() => { if (confirm('确认删除全部失败记录？')) { request.delete('/api/test/history'); window.location.reload(); } }}
+              className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+              <Trash2 size={12} /> 全部删除
+            </button>
             <button onClick={exportCSV}
               className="ml-auto flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
               <Download size={12} /> 导出 CSV
@@ -121,10 +144,12 @@ export default function FailedCases({ onRerunClass }) {
                   const isOpen = expanded[i];
                   const info = classInfo[fc.className] || {};
                   const parsed = parseReason(fc.reason);
+                  const defKey = `${fc.className}::${fc.methodName}`;
+                  const isSuspected = suspected.has(defKey);
 
                   return (
                     <>
-                      <tr key={i} className={`border-b border-slate-50 transition-colors ${isOpen ? 'bg-blue-50/20 border-b-0' : 'hover:bg-slate-50/60'}`}>
+                      <tr key={i} className={`border-b border-slate-50 transition-colors ${isOpen ? 'bg-blue-50/20 border-b-0' : isSuspected ? 'bg-red-50/40 border-b-red-100' : 'hover:bg-slate-50/60'}`}>
                         <td className="px-4 py-3 cursor-pointer" onClick={() => toggleExpand(i)}>
                           <div className="flex items-center gap-1.5">
                             <span
@@ -152,6 +177,13 @@ export default function FailedCases({ onRerunClass }) {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleSuspected(defKey); }}
+                              className={`p-1.5 rounded-lg transition-colors ${isSuspected ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
+                              title={isSuspected ? '取消标记疑似缺陷' : '标记为疑似缺陷'}
+                            >
+                              <Bug size={13} />
+                            </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); onRerunClass(fc.className); }}
                               className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors"
@@ -248,6 +280,12 @@ export default function FailedCases({ onRerunClass }) {
 
                               {/* Action buttons */}
                               <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
+                                <button
+                                  onClick={() => toggleSuspected(defKey)}
+                                  className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors font-medium ${isSuspected ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                                >
+                                  <Bug size={11} /> {isSuspected ? '已标记疑似缺陷' : '标记疑似缺陷'}
+                                </button>
                                 <button
                                   onClick={() => onRerunClass(fc.className)}
                                   className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors font-medium"

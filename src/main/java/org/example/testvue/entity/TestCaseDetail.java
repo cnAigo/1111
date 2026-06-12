@@ -20,6 +20,8 @@ public class TestCaseDetail {
     @Column(length = 32)  private String httpMethod;   // GET/POST
     @Column(length = 128) private String javaMethod;   // 对应的Java测试方法名
     @Column(length = 128) private String className;    // 对应的测试类名
+    private Long avgDurationMs;   // 历史平均执行时长(毫秒)，用于进度估算
+    private Integer sampleCount;  // 采样次数
 
     public TestCaseDetail() {}
 
@@ -34,6 +36,8 @@ public class TestCaseDetail {
     public TestCaseDetail setHttpMethod(String v) { this.httpMethod = v; return this; }
     public TestCaseDetail setJavaMethod(String v) { this.javaMethod = v; return this; }
     public TestCaseDetail setClassName(String v) { this.className = v; return this; }
+    public TestCaseDetail setAvgDurationMs(Long v) { this.avgDurationMs = v; return this; }
+    public TestCaseDetail setSampleCount(Integer v) { this.sampleCount = v; return this; }
 
     // getters
     public Long getId() { return id; }
@@ -47,4 +51,6 @@ public class TestCaseDetail {
     public String getHttpMethod() { return httpMethod; }
     public String getJavaMethod() { return javaMethod; }
     public String getClassName() { return className; }
+    public Long getAvgDurationMs() { return avgDurationMs; }
+    public Integer getSampleCount() { return sampleCount; }
 }
