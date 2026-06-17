@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, Square, Trash2, Loader2, Terminal, BarChart3, Layers, CheckSquare, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+import { Play, Square, Trash2, Loader2, Terminal, BarChart3, Layers, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import TerminalPanel from '../components/Terminal';
 import ReportPanel from '../components/ReportPanel';
 import TestTree from '../components/TestTree';
@@ -41,11 +41,7 @@ export default function Dashboard({
     ? testResults.reduce((sum, r) => sum + (r.warnings ? r.warnings.length : 0), 0)
     : 0;
 
-  // Quick filter helpers
   const allClassNames = modules.flatMap(m => m.classes.map(c => c.name));
-  const apiClassNames = modules.flatMap(m => m.classes.filter(c => c.type === 'api').map(c => c.name));
-  const uiClassNames = modules.flatMap(m => m.classes.filter(c => c.type === 'ui').map(c => c.name));
-  const selectAll = (names, add) => names.forEach(n => onToggle(n, add));
 
   return (
     <div className="flex-1 flex min-h-0 p-4 gap-4">
@@ -66,34 +62,18 @@ export default function Dashboard({
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2">
                 <Layers size={15} className="text-slate-500" />
-                <span className="text-[13px] font-semibold text-slate-700">测试用例选择</span>
+                <span className="text-[13px] font-semibold text-slate-700">功能</span>
               </div>
               <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                <button onClick={() => allClassNames.forEach(n => onToggle(n, true))}
+                  className="text-blue-400 hover:text-blue-600 transition-colors">全选</button>
+                <button onClick={() => allClassNames.forEach(n => onToggle(n, false))}
+                  className="text-red-400 hover:text-red-600 transition-colors">清空</button>
                 <span className="flex items-center gap-1">
                   <CheckSquare size={12} className="text-blue-400" />
                   {selectedCount} 选中
                 </span>
               </div>
-            </div>
-
-            {/* Quick filter buttons */}
-            <div className="px-3 py-2 flex items-center gap-1.5 border-b border-slate-50 bg-white">
-              <button onClick={() => selectAll(allClassNames, true)}
-                className="flex-1 text-[10px] font-medium px-2 py-1 rounded bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                <Check size={10} className="inline mr-0.5" />全选
-              </button>
-              <button onClick={() => selectAll(apiClassNames, true)}
-                className="flex-1 text-[10px] font-medium px-2 py-1 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
-                仅API
-              </button>
-              <button onClick={() => selectAll(uiClassNames, true)}
-                className="flex-1 text-[10px] font-medium px-2 py-1 rounded bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors">
-                仅UI
-              </button>
-              <button onClick={() => selectAll(allClassNames, false)}
-                className="flex-1 text-[10px] font-medium px-2 py-1 rounded bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors">
-                <X size={10} className="inline mr-0.5" />清空
-              </button>
             </div>
 
             {/* Test tree — scrollable */}
@@ -120,7 +100,7 @@ export default function Dashboard({
 
               {/* Action buttons */}
               <div className="px-4 py-3 flex items-center gap-2">
-                <button onClick={onStart} disabled={cleaning || selectedCount === 0}
+                <button onClick={onStart} disabled={cleaning || (!isRunning && selectedCount === 0)}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${
                     isRunning
                       ? 'bg-red-500 hover:bg-red-600 text-white'

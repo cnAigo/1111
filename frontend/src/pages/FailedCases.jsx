@@ -1,27 +1,56 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield, Copy, RefreshCw, ChevronDown, Download,
-  Eye, ChevronRight, FileText, Bug, Trash2
+  Eye, Bug, Trash2, Clock, Loader2
 } from 'lucide-react';
-import { MODULES } from '../data/modules';
 import StatusBadge from '../components/StatusBadge';
-import { useTestStore } from '../store/useTestStore';
+import Drawer from '../components/Drawer';
 import JSONViewer from '../components/JSONViewer';
+import { useTestStore, toast } from '../store/useTestStore';
 import request from '../utils/request';
 import { parseReason, errorPreview } from '../utils/parseReason';
 
-export default function FailedCases({ onRerunClass }) {
+export default function FailedCases({ modules = [], onRerunClass }) {
   const navigate = useNavigate();
   const failedCases = useTestStore(s => s.failedCases);
+  const failedCasesHasMore = useTestStore(s => s.failedCasesHasMore);
+  const failedCasesPage = useTestStore(s => s.failedCasesPage);
+  const loadFailedCases = useTestStore(s => s.loadFailedCases);
   const caseDetails = useTestStore(s => s.caseDetails);
   const [dedupe, setDedupe] = useState(false);
-  const [expanded, setExpanded] = useState({});
   const [moduleFilter, setModuleFilter] = useState('');
+  const [selectedCase, setSelectedCase] = useState(null); // { fc, info, parsed }
   const [suspected, setSuspected] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('taas_suspected_defects') || '[]')); }
     catch { return new Set(); }
   });
+
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
+
+  // Load initial data on mount
+  useEffect(() => {
+    if (failedCases.length === 0) loadFailedCases(0, false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Infinite scroll via IntersectionObserver
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !failedCasesHasMore) return;
+    setLoadingMore(true);
+    await loadFailedCases(failedCasesPage + 1, true);
+    setLoadingMore(false);
+  }, [loadingMore, failedCasesHasMore, failedCasesPage, loadFailedCases]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMore();
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const toggleSuspected = (key) => {
     setSuspected(prev => {
@@ -34,22 +63,22 @@ export default function FailedCases({ onRerunClass }) {
 
   const moduleOptions = useMemo(() => {
     const tags = [...new Set(failedCases.map(fc => {
-      for (const m of MODULES) for (const c of m.classes) if (c.name === fc.className) return m.tag;
+      for (const m of modules) for (const c of m.classes) if (c.name === fc.className) return m.tag;
       return null;
     }).filter(Boolean))];
-    return tags.map(t => ({ tag: t, label: MODULES.find(m => m.tag === t)?.label || t }));
-  }, [failedCases]);
+    return tags.map(t => ({ tag: t, label: modules.find(m => m.tag === t)?.label || t }));
+  }, [failedCases, modules]);
 
   const classInfo = useMemo(() => {
     const map = {};
-    for (const m of MODULES) for (const c of m.classes) { map[c.name] = { ...c, moduleLabel: m.label, moduleTag: m.tag, moduleColor: m.color }; }
+    for (const m of modules) for (const c of m.classes) { map[c.name] = { ...c, moduleLabel: m.label, moduleTag: m.tag, moduleColor: m.color }; }
     return map;
-  }, []);
+  }, [modules]);
 
   const displayed = useMemo(() => {
     let list = moduleFilter
       ? failedCases.filter(fc => {
-          for (const m of MODULES) if (m.tag === moduleFilter) for (const c of m.classes) if (c.name === fc.className) return true;
+          for (const m of modules) if (m.tag === moduleFilter) for (const c of m.classes) if (c.name === fc.className) return true;
           return false;
         })
       : failedCases;
@@ -58,10 +87,15 @@ export default function FailedCases({ onRerunClass }) {
       list = list.filter(fc => { const k = fc.className + '::' + fc.methodName; if (seen.has(k)) return false; seen.add(k); return true; });
     }
     return list;
-  }, [failedCases, dedupe, moduleFilter]);
+  }, [failedCases, dedupe, moduleFilter, modules]);
 
-  const toggleExpand = (i) => setExpanded(p => ({ ...p, [i]: !p[i] }));
-  const copyText = async (text) => { try { await navigator.clipboard.writeText(text); } catch {} };
+  const openDetail = (fc) => {
+    const info = classInfo[fc.className] || {};
+    const parsed = parseReason(fc.reason);
+    setSelectedCase({ fc, info, parsed });
+  };
+
+  const copyText = async (text) => { try { await navigator.clipboard.writeText(text); toast('复制成功', 'success'); } catch { toast('复制失败', 'error'); } };
 
   const exportCSV = () => {
     const BOM = '﻿';
@@ -136,187 +170,237 @@ export default function FailedCases({ onRerunClass }) {
                   <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">用例名称</th>
                   <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">错误概览</th>
                   <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider w-[140px]">发生时间</th>
-                  <th className="text-center px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider w-[100px]">操作</th>
+                  <th className="text-center px-4 py-2.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider w-[120px]">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {displayed.map((fc, i) => {
-                  const isOpen = expanded[i];
                   const info = classInfo[fc.className] || {};
                   const parsed = parseReason(fc.reason);
                   const defKey = `${fc.className}::${fc.methodName}`;
                   const isSuspected = suspected.has(defKey);
 
                   return (
-                    <>
-                      <tr key={i} className={`border-b border-slate-50 transition-colors ${isOpen ? 'bg-blue-50/20 border-b-0' : isSuspected ? 'bg-red-50/40 border-b-red-100' : 'hover:bg-slate-50/60'}`}>
-                        <td className="px-4 py-3 cursor-pointer" onClick={() => toggleExpand(i)}>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="w-2 h-2 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: info.moduleColor || '#94a3b8' }}
-                            />
-                            <span className="text-[12px] text-slate-600 truncate">{info.moduleLabel || '—'}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 cursor-pointer" onClick={() => toggleExpand(i)}>
-                          <div className="flex items-center gap-1.5">
-                            <StatusBadge variant={info.type === 'api' ? 'api' : 'ui'}>{info.type?.toUpperCase() || '?'}</StatusBadge>
-                            <span className="font-mono text-[12px] text-slate-800 font-medium">{fc.className}</span>
-                            <ChevronRight size={12} className={`text-slate-400 transition-transform ml-1 ${isOpen ? 'rotate-90' : ''}`} />
-                          </div>
-                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">{fc.methodName}</div>
-                        </td>
-                        <td className="px-4 py-3 cursor-pointer" onClick={() => toggleExpand(i)}>
-                          <span className="text-[12px] text-slate-500 line-clamp-1">
-                            {errorPreview(parsed.summary || fc.reason, 50)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-[11px] text-slate-400 whitespace-nowrap cursor-pointer" onClick={() => toggleExpand(i)}>
+                    <tr key={i} className={`border-b border-slate-50 transition-colors ${isSuspected ? 'bg-red-50/40 border-b-red-100' : 'hover:bg-slate-50/60'}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: info.moduleColor || '#94a3b8' }}
+                          />
+                          <span className="text-[12px] text-slate-600 truncate">{info.moduleLabel || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge variant={info.type === 'api' ? 'api' : 'ui'}>{info.type?.toUpperCase() || '?'}</StatusBadge>
+                          <span className="font-mono text-[12px] text-slate-800 font-medium truncate max-w-[200px]">{fc.className}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono mt-0.5 truncate max-w-[280px]">{fc.methodName}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[12px] text-slate-500 line-clamp-1">
+                          {errorPreview(parsed.summary || fc.reason, 60)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[11px] text-slate-400 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <Clock size={10} />
                           {(fc.lastFailTime || '').substring(0, 16).replace('T', ' ')}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleSuspected(defKey); }}
-                              className={`p-1.5 rounded-lg transition-colors ${isSuspected ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
-                              title={isSuspected ? '取消标记疑似缺陷' : '标记为疑似缺陷'}
-                            >
-                              <Bug size={13} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onRerunClass(fc.className); }}
-                              className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors"
-                              title="重跑此类"
-                            >
-                              <RefreshCw size={13} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); toggleExpand(i); }}
-                              className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
-                              title="查看详情"
-                            >
-                              <Eye size={13} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); copyText(fc.reason || ''); }}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-                              title="复制错误信息"
-                            >
-                              <Copy size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {isOpen && (
-                        <tr key={`detail-${i}`}>
-                          <td colSpan={5} className="px-0 py-0 border-b border-slate-200 bg-slate-50/30">
-                            <div className="px-6 py-4 space-y-4">
-                              {/* Header info */}
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[12px] font-semibold text-slate-700">{fc.className}</span>
-                                <span className="text-[11px] text-slate-400">·</span>
-                                <span className="text-[11px] text-slate-500 font-mono">{fc.methodName}</span>
-                                {info.desc && <><span className="text-[11px] text-slate-400">·</span><span className="text-[11px] text-slate-500">{info.desc}</span></>}
-                              </div>
-
-                              {/* Expected vs Actual */}
-                              {parsed.assertions.length > 0 && (
-                                <div>
-                                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">断言对比</p>
-                                  <div className="flex items-center gap-3 flex-wrap">
-                                    {parsed.assertions.map((a, j) => (
-                                      <div key={j} className="flex items-center gap-2">
-                                        <StatusBadge variant="expected">Expected: {a.expected}</StatusBadge>
-                                        <span className="text-[11px] text-slate-400">vs</span>
-                                        <StatusBadge variant="actual">Actual: {a.actual}</StatusBadge>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* JSON blocks */}
-                              {parsed.jsonBlocks.length > 0 && (
-                                <div>
-                                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                    Response Data
-                                    {parsed.jsonBlocks.length > 1 && <span className="text-slate-400 ml-1">({parsed.jsonBlocks.length} blocks)</span>}
-                                  </p>
-                                  <div className="space-y-3">
-                                    {parsed.jsonBlocks.map((json, j) => (
-                                      <JSONViewer key={j} data={json} maxHeight={280} defaultExpanded={j === 0} />
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Summary / error message */}
-                              {parsed.summary && (
-                                <div>
-                                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">错误信息</p>
-                                  <div className="relative rounded-lg bg-slate-100 p-3 text-[12px] font-mono text-slate-700 whitespace-pre-wrap break-all max-h-[160px] overflow-y-auto">
-                                    {parsed.summary}
-                                    <button
-                                      onClick={() => copyText(fc.reason || '')}
-                                      className="absolute top-2 right-2 p-1 rounded bg-white/60 hover:bg-white text-slate-400 hover:text-slate-700 transition-colors"
-                                      title="复制全部"
-                                    >
-                                      <Copy size={12} />
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Stack trace */}
-                              {parsed.stackTrace && (
-                                <div>
-                                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">堆栈追踪</p>
-                                  <pre className="text-[11px] font-mono text-slate-500 bg-slate-100 rounded-lg p-3 max-h-[200px] overflow-auto whitespace-pre-wrap break-all">
-                                    {parsed.stackTrace}
-                                  </pre>
-                                </div>
-                              )}
-
-                              {/* Action buttons */}
-                              <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
-                                <button
-                                  onClick={() => toggleSuspected(defKey)}
-                                  className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors font-medium ${isSuspected ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
-                                >
-                                  <Bug size={11} /> {isSuspected ? '已标记疑似缺陷' : '标记疑似缺陷'}
-                                </button>
-                                <button
-                                  onClick={() => onRerunClass(fc.className)}
-                                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors font-medium"
-                                >
-                                  <RefreshCw size={11} /> 重跑此类
-                                </button>
-                                <button
-                                  onClick={() => copyText(fc.reason || '')}
-                                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                                >
-                                  <Copy size={11} /> 复制错误信息
-                                </button>
-                                <button
-                                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                                  title="查看完整日志"
-                                >
-                                  <FileText size={11} /> 查看日志
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => toggleSuspected(defKey)}
+                            className={`p-1.5 rounded-lg transition-colors ${isSuspected ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'}`}
+                            title={isSuspected ? '取消标记疑似缺陷' : '标记为疑似缺陷'}
+                          >
+                            <Bug size={13} />
+                          </button>
+                          <button
+                            onClick={() => onRerunClass(fc.className)}
+                            className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors"
+                            title="重跑此类"
+                          >
+                            <RefreshCw size={13} />
+                          </button>
+                          <button
+                            onClick={() => openDetail(fc)}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-400 hover:text-blue-600 transition-colors"
+                            title="查看详情"
+                          >
+                            <Eye size={13} />
+                          </button>
+                          <button
+                            onClick={() => copyText(fc.reason || '')}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                            title="复制错误信息"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
             </table>
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="flex items-center justify-center py-3">
+              {loadingMore ? (
+                <span className="flex items-center gap-2 text-[11px] text-slate-400">
+                  <Loader2 size={12} className="animate-spin" /> 加载更多...
+                </span>
+              ) : failedCasesHasMore ? (
+                <span className="text-[11px] text-slate-300">滚动加载更多</span>
+              ) : (
+                <span className="text-[11px] text-slate-300">— 已加载全部 —</span>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Detail Drawer */}
+      <Drawer
+        open={!!selectedCase}
+        onClose={() => setSelectedCase(null)}
+        title={selectedCase ? `${selectedCase.fc.className} · ${selectedCase.fc.methodName}` : ''}
+        width="w-[540px]"
+      >
+        {selectedCase && (() => {
+          const { fc, info, parsed } = selectedCase;
+          const defKey = `${fc.className}::${fc.methodName}`;
+          const isSuspected = suspected.has(defKey);
+
+          return (
+            <div className="space-y-5">
+              {/* Meta */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: info.moduleColor || '#94a3b8' }} />
+                <span className="text-[12px] font-semibold text-slate-700">{info.moduleLabel || '—'}</span>
+                <StatusBadge variant={info.type === 'api' ? 'api' : 'ui'}>{info.type?.toUpperCase() || '?'}</StatusBadge>
+                {info.desc && <span className="text-[11px] text-slate-500">{info.desc}</span>}
+              </div>
+
+              <div className="text-[11px] text-slate-400 flex items-center gap-1">
+                <Clock size={10} />
+                {(fc.lastFailTime || '').substring(0, 19).replace('T', ' ')}
+              </div>
+
+              {/* Assertions */}
+              {parsed.assertions.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">断言对比</p>
+                  <div className="space-y-1.5">
+                    {parsed.assertions.map((a, j) => (
+                      <div key={j} className="flex items-center gap-2 flex-wrap bg-slate-50 rounded-lg px-3 py-2">
+                        <StatusBadge variant="expected">Expected: {a.expected}</StatusBadge>
+                        <span className="text-[11px] text-slate-400">vs</span>
+                        <StatusBadge variant="actual">Actual: {a.actual}</StatusBadge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* JSON blocks */}
+              {parsed.jsonBlocks.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Response Data
+                    {parsed.jsonBlocks.length > 1 && <span className="text-slate-400 ml-1">({parsed.jsonBlocks.length} blocks)</span>}
+                  </p>
+                  <div className="space-y-3">
+                    {parsed.jsonBlocks.map((json, j) => (
+                      <JSONViewer key={j} data={json} maxHeight={280} defaultExpanded />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Error summary */}
+              {parsed.summary && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">错误信息</p>
+                    <button
+                      onClick={() => copyText(parsed.summary)}
+                      className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <Copy size={11} /> 复制
+                    </button>
+                  </div>
+                  <pre className="text-[12px] font-mono text-slate-700 bg-slate-100 rounded-lg p-3 whitespace-pre-wrap break-all max-h-[200px] overflow-y-auto leading-relaxed">
+                    {parsed.summary}
+                  </pre>
+                </div>
+              )}
+
+              {/* Stack trace */}
+              {parsed.stackTrace && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">堆栈追踪</p>
+                    <button
+                      onClick={() => copyText(parsed.stackTrace)}
+                      className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <Copy size={11} /> 复制
+                    </button>
+                  </div>
+                  <pre className="text-[11px] font-mono text-slate-500 bg-slate-100 rounded-lg p-3 max-h-[400px] overflow-auto whitespace-pre-wrap break-all leading-relaxed">
+                    {parsed.stackTrace}
+                  </pre>
+                </div>
+              )}
+
+              {/* Full raw reason (fallback) */}
+              {!parsed.summary && !parsed.stackTrace && fc.reason && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">原始错误输出</p>
+                    <button
+                      onClick={() => copyText(fc.reason)}
+                      className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <Copy size={11} /> 复制
+                    </button>
+                  </div>
+                  <pre className="text-[11px] font-mono text-slate-600 bg-slate-100 rounded-lg p-3 max-h-[400px] overflow-auto whitespace-pre-wrap break-all leading-relaxed">
+                    {fc.reason}
+                  </pre>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                <button
+                  onClick={() => toggleSuspected(defKey)}
+                  className={`flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg transition-colors font-medium ${isSuspected ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                >
+                  <Bug size={11} /> {isSuspected ? '已标记疑似缺陷' : '标记疑似缺陷'}
+                </button>
+                <button
+                  onClick={() => { onRerunClass(fc.className); setSelectedCase(null); }}
+                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors font-medium"
+                >
+                  <RefreshCw size={11} /> 重跑此类
+                </button>
+                <button
+                  onClick={() => copyText(fc.reason || '')}
+                  className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors font-medium ml-auto"
+                >
+                  <Copy size={11} /> 一键复制全部
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </Drawer>
     </div>
   );
 }

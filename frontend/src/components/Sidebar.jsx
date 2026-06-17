@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Terminal, CheckCircle2, History, Shield, Settings, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Terminal, CheckCircle2, History, Shield, Settings, Zap, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { MENU_ITEMS, STATUS_CFG } from '../data/modules';
 import { useTestStore } from '../store/useTestStore';
 
@@ -13,7 +13,7 @@ export default function Sidebar({ cleaning, open, onToggle }) {
   const elapsedSec = useTestStore(s => s.elapsedSec);
   const fmtElapsed = useTestStore(s => s.fmtElapsed);
 
-  const icons = { dashboard: Terminal, results: CheckCircle2, history: History, failed: Shield, settings: Settings };
+  const icons = { dashboard: Terminal, results: CheckCircle2, history: History, failed: Shield, coverage: BarChart3, settings: Settings };
   const sc = STATUS_CFG[status] || STATUS_CFG.IDLE;
 
   return (

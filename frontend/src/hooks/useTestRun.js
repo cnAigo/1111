@@ -1,11 +1,50 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { writeTerminal, useTestStore } from '../store/useTestStore';
 
-const FETCH_TIMEOUT_MS = 30000;       // 30s per request
-const POLL_INTERVAL_MS = 1500;        // 1.5s between polls
-const STALL_THRESHOLD_MS = 300000;    // 5 min no progress → stalled
 const MAX_EXECUTION_MS = 1800000;     // 30 min total → timeout
 const MAX_RETRIES = 2;
-const MAX_LOG = 5000;
+
+// ── ANSI escape code helpers ──
+const S = '\x1b[';
+const R = S + '0m';
+const B = S + '1m';
+const ANSI = {
+  reset:    R,
+  bold:     B,
+  red:      S + '91m',
+  green:    S + '92m',
+  yellow:   S + '93m',
+  blue:     S + '94m',
+  magenta:  S + '95m',
+  cyan:     S + '1;96m',
+  white:    S + '37m',
+  gray:     S + '90m',
+  dimGray:  S + '2;90m',
+  rose:     S + '31m',
+};
+const ansiMap = {
+  'text-cyan-400':      ANSI.cyan,
+  'text-red-400':        ANSI.red,
+  'text-emerald-400':    ANSI.green,
+  'text-emerald-300':    ANSI.green,
+  'text-amber-400':      ANSI.yellow,
+  'text-rose-400':       ANSI.red + B,
+  'text-rose-300':       ANSI.rose,
+  'text-slate-300':      ANSI.white,
+  'text-slate-400':      ANSI.gray,
+  'text-slate-500':      ANSI.dimGray,
+  'text-slate-600':      ANSI.dimGray,
+  'font-bold':           B,
+};
+
+const toAnsi = (text, cls = '') => {
+  if (!cls) return text + '\r\n';
+  let prefix = '';
+  for (const [key, code] of Object.entries(ansiMap)) {
+    if (cls.includes(key)) prefix += code;
+  }
+  return prefix + text + ANSI.reset + '\r\n';
+};
 
 export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showToast) {
   const [isRunning, setIsRunning] = useState(false);
@@ -17,18 +56,16 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
   const [runningLabel, setRunningLabel] = useState('');
   const [terminalLines, setTerminalLines] = useState([]);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [estimatedMs, setEstimatedMs] = useState(0);
 
-  const pollRef = useRef(null);
-  const lastOutLenRef = useRef(0);
+  const wsRef = useRef(null);
   const startTimeRef = useRef(null);
-  const lastProgressRef = useRef(0);
-  const lastProgressTimeRef = useRef(0);
-  const consecutiveFailsRef = useRef(0);
+  const timeoutRef = useRef(null);
 
   // ── fetch with timeout ──
   const fetchWithTimeout = useCallback(async (url, options = {}) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), 30000);
     try {
       const r = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timer);
@@ -36,7 +73,7 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
       return r;
     } catch (err) {
       clearTimeout(timer);
-      if (err.name === 'AbortError') throw new Error('请求超时 (' + (FETCH_TIMEOUT_MS / 1000) + 's)');
+      if (err.name === 'AbortError') throw new Error('请求超时 (30s)');
       throw err;
     }
   }, []);
@@ -52,7 +89,7 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
         return await r.json();
       } catch (err) {
         if (i === retries) throw err;
-        await new Promise(r => setTimeout(r, 1000 * (i + 1))); // backoff: 1s, 2s
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
       }
     }
   }, [fetchWithTimeout]);
@@ -70,10 +107,7 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
   }, [fetchWithTimeout]);
 
   const appendLog = useCallback((text, cls = '') => {
-    setTerminalLines(prev => {
-      const next = [...prev, { text, cls, id: Date.now() + Math.random() }];
-      return next.length > MAX_LOG ? next.slice(next.length - MAX_LOG) : next;
-    });
+    writeTerminal(toAnsi(text, cls));
   }, []);
 
   const loadResults = useCallback(async (setTestResults) => {
@@ -92,31 +126,202 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
   }, [apiGet, showToast]);
 
   const resetRunState = useCallback(() => {
-    lastOutLenRef.current = 0; setTerminalLines([]);
+    setTerminalLines([]);
     setProgress(0); setProgressTotal(0); setDurationFmt('');
-    setRunningLabel('');
-    lastProgressRef.current = 0;
-    lastProgressTimeRef.current = 0;
-    consecutiveFailsRef.current = 0;
+    setRunningLabel(''); setEstimatedMs(0); useTestStore.getState().setEstimatedMs(0);
   }, []);
 
-  // ── Force stop (used when stalled / timeout) ──
-  const forceStop = useCallback(async (reason) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    setIsRunning(false);
-    setStatus('FAILED');
-    appendLog('', '');
-    appendLog('══════════════════════════════════════════', 'text-red-400');
-    appendLog('  ✗ ' + reason, 'text-red-400');
-    appendLog('══════════════════════════════════════════', 'text-red-400');
+  // ── WebSocket connection ──
 
-    // Try to kill the backend process
-    if (taskId) {
-      try { await apiPost('/api/test/stop/' + taskId, {}, 0); } catch {}
+  const disconnectWs = useCallback(() => {
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+    if (wsRef.current) {
+      try { wsRef.current.close(); } catch {}
+      wsRef.current = null;
     }
-    localStorage.removeItem('taas_taskId');
-    showToast(reason, 'error');
-  }, [taskId, appendLog, apiPost, showToast]);
+  }, []);
+
+  const connectWebSocket = useCallback((tid) => {
+    disconnectWs();
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/test-run/${tid}`;
+    const ws = new WebSocket(wsUrl);
+
+    wsRef.current = ws;
+
+    // Client-side execution timeout
+    timeoutRef.current = setTimeout(() => {
+      appendLog('', '');
+      appendLog('══════════════════════════════════════════', 'text-red-400');
+      appendLog('  ✗ 执行超时 (' + Math.round(MAX_EXECUTION_MS / 60000) + '分钟) — 已自动终止', 'text-red-400');
+      appendLog('══════════════════════════════════════════', 'text-red-400');
+      disconnectWs();
+      setIsRunning(false);
+      setStatus('FAILED');
+      try { apiPost('/api/test/stop/' + tid, {}, 0); } catch {}
+      localStorage.removeItem('taas_taskId');
+      showToast('执行超时', 'error');
+    }, MAX_EXECUTION_MS);
+
+    ws.onopen = () => {
+      appendLog('[系统] WebSocket 已连接', 'text-slate-500');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+
+        switch (msg.type) {
+          case 'line': {
+            writeTerminal(msg.text + '\r\n');
+            break;
+          }
+
+          case 'progress': {
+            if (msg.progress !== undefined) setProgress(msg.progress);
+            if (msg.progressTotal !== undefined) setProgressTotal(msg.progressTotal);
+            break;
+          }
+
+          case 'status': {
+            if (msg.status === 'STOPPED') {
+              disconnectWs();
+              setIsRunning(false);
+              setStatus('STOPPED');
+              appendLog('', '');
+              appendLog(`  ⏹ ${msg.errorMessage || '已停止'}`, 'text-amber-400');
+              showToast('已停止', 'warning');
+            }
+            break;
+          }
+
+          case 'result': {
+            disconnectWs();
+            setIsRunning(false);
+            setStatus(msg.status);
+            if (msg.durationFmt !== undefined) setDurationFmt(msg.durationFmt);
+            if (msg.progress !== undefined) setProgress(msg.progress);
+            if (msg.progressTotal !== undefined) setProgressTotal(msg.progressTotal);
+
+            // Fetch detailed results + case details
+            (async () => {
+              try {
+                const [results, detailsArr] = await Promise.all([
+                  apiGet('/api/test/results'),
+                  apiGet('/api/test/case-details').catch(() => []),
+                ]);
+                const detailMap = {};
+                for (const d of (Array.isArray(detailsArr) ? detailsArr : [])) {
+                  const key = d.className || '';
+                  if (!detailMap[key]) detailMap[key] = {};
+                  if (d.javaMethod) detailMap[key][d.javaMethod] = d;
+                }
+
+                appendLog('', '');
+                appendLog('══════════════════════════════════════════', 'text-slate-600');
+                appendLog('  Test Results', 'text-slate-300');
+                appendLog('══════════════════════════════════════════', 'text-slate-600');
+                appendLog('', '');
+
+                let grandTotal = 0, grandFailed = 0, grandSkipped = 0, grandWarn = 0;
+                for (const cls of (Array.isArray(results) ? results : [])) {
+                  const hasFailures = (cls.failures || 0) + (cls.errors || 0) > 0;
+                  const warnCount = cls.warnings ? cls.warnings.length : 0;
+                  grandWarn += warnCount;
+                  const timeStr = cls.time ? ' (' + cls.time + 's)' : '';
+                  const marker = hasFailures ? '✗' : '✓';
+                  const markerCls = hasFailures ? 'text-red-400' : 'text-emerald-400';
+
+                  let header = marker + ' ' + cls.className + ' — ' + cls.tests + ' tests, ' + (cls.failures || 0) + ' failures' + timeStr;
+                  if (warnCount > 0) header += '  ⚠' + warnCount;
+                  appendLog(header, markerCls + ' font-bold');
+
+                  const clsDetailMap = detailMap[cls.className] || {};
+
+                  if (cls.cases && cls.cases.length > 0) {
+                    for (const c of cls.cases) {
+                      const detail = clsDetailMap[c.name] || Object.values(clsDetailMap).find(d => d.caseId && c.name.includes(d.caseId));
+                      const caseTime = c.time ? ' (' + c.time + 's)' : '';
+                      const detailSuffix = detail
+                        ? '  — ' + [detail.title, detail.caseType, detail.httpMethod ? detail.httpMethod + ' ' + (detail.apiUrl || '') : ''].filter(Boolean).join(' | ')
+                        : '';
+
+                      if (c.status === 'PASS') {
+                        appendLog('    ✓ ' + c.name + caseTime, 'text-emerald-300 text-[11px]');
+                        if (detail) {
+                          if (detail.title) appendLog('      标题: ' + detail.title, 'text-slate-500 text-[10px]');
+                          if (detail.expected) appendLog('      预期: ' + detail.expected, 'text-slate-500 text-[10px]');
+                          if (detail.steps) appendLog('      步骤: ' + detail.steps.substring(0, 120) + (detail.steps.length > 120 ? '…' : ''), 'text-slate-600 text-[10px]');
+                        }
+                      } else {
+                        appendLog('    ✗ ' + c.name + caseTime + detailSuffix, 'text-red-400');
+                        if (detail) {
+                          if (detail.title) appendLog('      标题: ' + detail.title, 'text-rose-400 text-[10px]');
+                          if (detail.expected) appendLog('      预期: ' + detail.expected, 'text-rose-400 text-[10px]');
+                        }
+                        if (c.reason) {
+                          for (const reasonLine of c.reason.split('\n')) {
+                            const t2 = reasonLine.trim();
+                            if (t2) appendLog('      ' + t2, 'text-rose-400 text-[11px]');
+                          }
+                        }
+                      }
+                    }
+                  }
+                  if (cls.warnings && cls.warnings.length > 0) {
+                    appendLog('    ⚠ Warnings:', 'text-amber-400 font-bold');
+                    for (const w of cls.warnings) {
+                      appendLog('      ' + w, 'text-amber-400');
+                    }
+                  }
+                  appendLog('', '');
+                  grandTotal += cls.tests || 0;
+                  grandFailed += (cls.failures || 0) + (cls.errors || 0);
+                  grandSkipped += cls.skipped || 0;
+                }
+
+                appendLog('──────────────────────────────────────────', 'text-slate-600');
+                let summary = '  Results: ' + grandTotal + ' tests, ' + grandFailed + ' failed, ' + grandSkipped + ' skipped';
+                if (grandWarn > 0) {
+                  summary += ', ⚠' + grandWarn + ' warnings';
+                  appendLog(summary, 'text-amber-400');
+                  appendLog('  ⚠ 请检查上方警告项 — 测试虽通过但可能有缺陷', 'text-amber-400');
+                } else if (grandFailed > 0) {
+                  appendLog(summary, 'text-red-400');
+                } else {
+                  appendLog(summary + ' — all passed ' + (msg.durationFmt || ''), 'text-emerald-400');
+                }
+                appendLog('══════════════════════════════════════════', 'text-slate-600');
+
+                showToast(msg.status === 'SUCCESS' ? '测试通过!' : '测试失败', msg.status === 'SUCCESS' ? 'success' : 'error');
+              } catch (e) {
+                appendLog('', '');
+                appendLog('══════════════════════════════════════════', 'text-slate-600');
+                appendLog('  ✗ ' + (msg.errorMessage || 'Tests failed'), 'text-red-400');
+                appendLog('══════════════════════════════════════════', 'text-slate-600');
+              }
+              localStorage.removeItem('taas_taskId');
+            })();
+            break;
+          }
+        }
+      } catch {
+        // Ignore non-JSON messages
+      }
+    };
+
+    ws.onclose = () => {
+      appendLog('[系统] WebSocket 已断开', 'text-slate-500');
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+    };
+
+    ws.onerror = () => {
+      // If connection fails while running, fall back to polling
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+      try { ws.close(); } catch {}
+    };
+  }, [appendLog, disconnectWs, apiGet, apiPost, showToast]);
 
   // Parse a line of raw Maven/Surefire output into IntelliJ-style format
   const parseOutputLine = useCallback((rawLine) => {
@@ -220,180 +425,7 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
     return [{ text: cleaned, cls: 'text-slate-400', level }];
   }, []);
 
-  const pollStatus = useCallback(async (tid) => {
-    // ── Global execution timeout ──
-    if (startTimeRef.current) {
-      const elapsed = Date.now() - startTimeRef.current;
-      if (elapsed > MAX_EXECUTION_MS) {
-        await forceStop('执行超时 (' + Math.round(MAX_EXECUTION_MS / 60000) + '分钟) — 已自动终止');
-        return null;
-      }
-    }
-
-    try {
-      const sd = await apiGet('/api/test/status?taskId=' + tid, 0);  // no retries for poll
-      consecutiveFailsRef.current = 0; // reset on success
-
-      setDurationFmt(sd.durationFmt || '');
-      if (sd.progress !== undefined) setProgress(sd.progress);
-      if (sd.progressTotal !== undefined) setProgressTotal(sd.progressTotal);
-
-      // ── Stall detection: track progress over time ──
-      if (sd.progress !== undefined) {
-        if (sd.progress !== lastProgressRef.current) {
-          lastProgressRef.current = sd.progress;
-          lastProgressTimeRef.current = Date.now();
-        } else if (lastProgressTimeRef.current > 0) {
-          const stalledMs = Date.now() - lastProgressTimeRef.current;
-          if (stalledMs > STALL_THRESHOLD_MS && sd.status === 'RUNNING') {
-            appendLog('[WARN] 进度停滞超过 ' + Math.round(STALL_THRESHOLD_MS / 60000) + ' 分钟 (当前: ' + sd.progress + '/' + (sd.progressTotal || '?') + ')', 'text-amber-400');
-            // Don't auto-kill on stall — maybe the test is just slow
-            // But note the warning in the log
-            lastProgressTimeRef.current = Date.now(); // Reset to avoid flooding warnings
-          }
-        }
-      }
-
-      const out = sd.output || '';
-      if (out.length > lastOutLenRef.current) {
-        const newText = out.substring(lastOutLenRef.current);
-        lastOutLenRef.current = out.length;
-        for (const line of newText.split('\n')) {
-          const results = parseOutputLine(line);
-          if (results) {
-            for (const r of results) {
-              if (r.text !== undefined) appendLog(r.text, r.cls);
-            }
-          }
-        }
-      }
-
-      if (sd.status === 'SUCCESS' || sd.status === 'FAILED') {
-        if (pollRef.current) clearInterval(pollRef.current);
-        setIsRunning(false);
-        setStatus(sd.status);
-
-        // Fetch detailed results + case details for rich output
-        try {
-          const [results, detailsArr] = await Promise.all([
-            apiGet('/api/test/results'),
-            apiGet('/api/test/case-details').catch(() => []),
-          ]);
-          // Build case detail lookup keyed by className -> javaMethod -> detail
-          const detailMap = {};
-          for (const d of (Array.isArray(detailsArr) ? detailsArr : [])) {
-            const key = d.className || '';
-            if (!detailMap[key]) detailMap[key] = {};
-            if (d.javaMethod) detailMap[key][d.javaMethod] = d;
-          }
-
-          appendLog('', '');
-          appendLog('══════════════════════════════════════════', 'text-slate-600');
-          appendLog('  Test Results', 'text-slate-300');
-          appendLog('══════════════════════════════════════════', 'text-slate-600');
-          appendLog('', '');
-
-          let grandTotal = 0, grandFailed = 0, grandSkipped = 0, grandWarn = 0;
-          for (const cls of (Array.isArray(results) ? results : [])) {
-            const hasFailures = (cls.failures || 0) + (cls.errors || 0) > 0;
-            const warnCount = cls.warnings ? cls.warnings.length : 0;
-            grandWarn += warnCount;
-            const timeStr = cls.time ? ' (' + cls.time + 's)' : '';
-            const marker = hasFailures ? '✗' : '✓';
-            const markerCls = hasFailures ? 'text-red-400' : 'text-emerald-400';
-
-            let header = marker + ' ' + cls.className + ' — ' + cls.tests + ' tests, ' + (cls.failures || 0) + ' failures' + timeStr;
-            if (warnCount > 0) header += '  ⚠' + warnCount;
-            appendLog(header, markerCls + ' font-bold');
-
-            const clsDetailMap = detailMap[cls.className] || {};
-
-            if (cls.cases && cls.cases.length > 0) {
-              for (const c of cls.cases) {
-                const detail = clsDetailMap[c.name] || Object.values(clsDetailMap).find(d => d.caseId && c.name.includes(d.caseId));
-                const caseTime = c.time ? ' (' + c.time + 's)' : '';
-                const detailSuffix = detail
-                  ? '  — ' + [detail.title, detail.caseType, detail.httpMethod ? detail.httpMethod + ' ' + (detail.apiUrl || '') : ''].filter(Boolean).join(' | ')
-                  : '';
-
-                if (c.status === 'PASS') {
-                  appendLog('    ✓ ' + c.name + caseTime, 'text-emerald-300 text-[11px]');
-                  if (detail) {
-                    if (detail.title) appendLog('      标题: ' + detail.title, 'text-slate-500 text-[10px]');
-                    if (detail.expected) appendLog('      预期: ' + detail.expected, 'text-slate-500 text-[10px]');
-                    if (detail.steps) appendLog('      步骤: ' + detail.steps.substring(0, 120) + (detail.steps.length > 120 ? '…' : ''), 'text-slate-600 text-[10px]');
-                  }
-                } else {
-                  appendLog('    ✗ ' + c.name + caseTime + detailSuffix, 'text-red-400');
-                  if (detail) {
-                    if (detail.title) appendLog('      标题: ' + detail.title, 'text-rose-400 text-[10px]');
-                    if (detail.expected) appendLog('      预期: ' + detail.expected, 'text-rose-400 text-[10px]');
-                  }
-                  if (c.reason) {
-                    for (const reasonLine of c.reason.split('\n')) {
-                      const t2 = reasonLine.trim();
-                      if (t2) appendLog('      ' + t2, 'text-rose-400 text-[11px]');
-                    }
-                  }
-                }
-              }
-            }
-            // Show warnings extracted from logs
-            if (cls.warnings && cls.warnings.length > 0) {
-              appendLog('    ⚠ Warnings:', 'text-amber-400 font-bold');
-              for (const w of cls.warnings) {
-                appendLog('      ' + w, 'text-amber-400');
-              }
-            }
-            appendLog('', '');
-            grandTotal += cls.tests || 0;
-            grandFailed += (cls.failures || 0) + (cls.errors || 0);
-            grandSkipped += cls.skipped || 0;
-          }
-
-          appendLog('──────────────────────────────────────────', 'text-slate-600');
-          let summary = '  Results: ' + grandTotal + ' tests, ' + grandFailed + ' failed, ' + grandSkipped + ' skipped';
-          if (grandWarn > 0) {
-            summary += ', ⚠' + grandWarn + ' warnings';
-            appendLog(summary, 'text-amber-400');
-            appendLog('  ⚠ 请检查上方警告项 — 测试虽通过但可能有缺陷', 'text-amber-400');
-          } else if (grandFailed > 0) {
-            appendLog(summary, 'text-red-400');
-          } else {
-            appendLog(summary + ' — all passed ' + (sd.durationFmt || ''), 'text-emerald-400');
-          }
-          appendLog('══════════════════════════════════════════', 'text-slate-600');
-          if (grandFailed > 0) {
-            appendLog('  Results: ' + grandTotal + ' tests, ' + grandFailed + ' failed, ' + grandSkipped + ' skipped', 'text-red-400');
-          } else {
-            appendLog('  Results: ' + grandTotal + ' tests, all passed — ' + (sd.durationFmt || ''), 'text-emerald-400');
-          }
-          appendLog('══════════════════════════════════════════', 'text-slate-600');
-        } catch (e) {
-          appendLog('', '');
-          appendLog('══════════════════════════════════════════', 'text-slate-600');
-          appendLog('  ✗ ' + (sd.errorMessage || 'Tests failed'), 'text-red-400');
-          appendLog('══════════════════════════════════════════', 'text-slate-600');
-        }
-
-        showToast(sd.status === 'SUCCESS' ? '测试通过!' : '测试失败', sd.status === 'SUCCESS' ? 'success' : 'error');
-        return sd.status;
-      } else if (sd.status === 'STOPPED') {
-        if (pollRef.current) clearInterval(pollRef.current);
-        setIsRunning(false); setStatus('STOPPED');
-        appendLog('', '');
-        appendLog('  ⏹ Process stopped', 'text-amber-400');
-      }
-    } catch (err) {
-      // Poll failed — count consecutive failures
-      consecutiveFailsRef.current++;
-      if (consecutiveFailsRef.current >= 10) {
-        // 10 consecutive poll failures (15s) — backend likely down
-        await forceStop('后端服务无响应 (连续 ' + consecutiveFailsRef.current + ' 次轮询失败)');
-      }
-    }
-    return null;
-  }, [appendLog, parseOutputLine, showToast, apiGet, forceStop]);
+  // ── Test control ──
 
   const startTest = useCallback(async (selectedModule, selectedClass) => {
     if (isRunning) return;
@@ -421,11 +453,11 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
       }
       setTaskId(d.taskId);
       localStorage.setItem('taas_taskId', d.taskId);
-      lastOutLenRef.current = 0;
-      lastProgressRef.current = 0;
-      lastProgressTimeRef.current = Date.now();
-      consecutiveFailsRef.current = 0;
-      pollRef.current = setInterval(() => pollStatus(d.taskId), POLL_INTERVAL_MS);
+      connectWebSocket(d.taskId);
+      // Fetch estimatedMs for time-based progress
+      apiGet('/api/test/status?taskId=' + d.taskId).then(sd => {
+        if (sd.estimatedMs) { setEstimatedMs(sd.estimatedMs); useTestStore.getState().setEstimatedMs(sd.estimatedMs); }
+      }).catch(() => {});
       return d.taskId;
     } catch (err) {
       appendLog('[ERROR] 启动失败: ' + err.message, 'text-red-400');
@@ -433,29 +465,25 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
       setIsRunning(false); setStatus('IDLE');
       return null;
     }
-  }, [isRunning, cfgUrl, cfgProjectId, cfgUsername, cfgPassword, resetRunState, appendLog, pollStatus, showToast, apiPost]);
+  }, [isRunning, cfgUrl, cfgProjectId, cfgUsername, cfgPassword, resetRunState, appendLog, showToast, apiPost, connectWebSocket]);
 
   const resumeTask = useCallback((tid, label) => {
     setTaskId(tid); setIsRunning(true); setStatus('RUNNING'); setRunningLabel(label || 'Rerun');
     localStorage.setItem('taas_taskId', tid);
-    lastOutLenRef.current = 0;
-    lastProgressRef.current = 0;
-    lastProgressTimeRef.current = Date.now();
-    consecutiveFailsRef.current = 0;
     const now = new Date().toLocaleTimeString('zh-CN', { hour12: false });
     appendLog('╔══════════════════════════════════════════════════╗', 'text-slate-500');
     appendLog('║  Resumed at ' + now + '                            ║', 'text-slate-400');
     appendLog('║  ▶ ' + (label || 'Rerun').padEnd(47) + '║', 'text-cyan-400');
     appendLog('╚══════════════════════════════════════════════════╝', 'text-slate-500');
     appendLog('', '');
-    pollRef.current = setInterval(() => pollStatus(tid), POLL_INTERVAL_MS);
-  }, [appendLog, pollStatus]);
+    connectWebSocket(tid);
+  }, [appendLog, connectWebSocket]);
 
   const stopTest = useCallback(async () => {
     if (!taskId) return;
+    disconnectWs();
     try {
       await apiPost('/api/test/stop/' + taskId, {});
-      if (pollRef.current) clearInterval(pollRef.current);
       setIsRunning(false); setStatus('IDLE');
       localStorage.removeItem('taas_taskId');
       appendLog('[WARN] Stopped by user', 'text-amber-400');
@@ -463,7 +491,7 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
     } catch {
       showToast('停止失败', 'error');
     }
-  }, [taskId, appendLog, apiPost, showToast]);
+  }, [taskId, appendLog, apiPost, disconnectWs, showToast]);
 
   // ── Elapsed timer ──
   useEffect(() => {
@@ -476,40 +504,51 @@ export function useTestRun(cfgUrl, cfgProjectId, cfgUsername, cfgPassword, showT
   }, [isRunning]);
 
   // Cleanup on unmount
-  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+  useEffect(() => { return () => { disconnectWs(); }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (status === 'SUCCESS' || status === 'FAILED' || status === 'STOPPED') {
       localStorage.removeItem('taas_taskId');
     }
   }, [status]);
 
-  // Initial status sync
+  // Initial status sync — reconnect WebSocket if task was running before page refresh
   useEffect(() => {
     apiGet('/api/test/status').then(sd => {
       if (sd.status === 'RUNNING') {
         const saved = localStorage.getItem('taas_taskId');
         if (saved) {
           setIsRunning(true); setStatus('RUNNING'); setTaskId(saved);
-          lastOutLenRef.current = 0;
-          consecutiveFailsRef.current = 0;
-          pollRef.current = setInterval(() => pollStatus(saved), POLL_INTERVAL_MS);
+          if (sd.estimatedMs) { setEstimatedMs(sd.estimatedMs); useTestStore.getState().setEstimatedMs(sd.estimatedMs); }
+          connectWebSocket(saved);
         } else {
           setIsRunning(true); setStatus('RUNNING');
           setRunningLabel(sd.label || '');
           if (sd.durationFmt) setDurationFmt(sd.durationFmt);
+          if (sd.estimatedMs) { setEstimatedMs(sd.estimatedMs); useTestStore.getState().setEstimatedMs(sd.estimatedMs); }
         }
       } else if (sd.status === 'SUCCESS' || sd.status === 'FAILED' || sd.status === 'STOPPED') {
         setStatus(sd.status);
         localStorage.removeItem('taas_taskId');
       }
     }).catch(() => {});
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fmtElapsed = (s) => { const m = Math.floor(s / 60); return m > 0 ? `${m}m ${s % 60}s` : `${s}s`; };
-  const pct = progressTotal > 0 ? Math.round((progress / progressTotal) * 100) : 0;
+
+  // Time-based smooth progress: uses elapsed time vs estimated duration
+  const pct = (() => {
+    if (status === 'SUCCESS' || status === 'FAILED' || status === 'STOPPED') return 100;
+    if (!isRunning) return 0;
+    if (estimatedMs > 0) {
+      return Math.min(Math.floor((elapsedSec * 1000 / estimatedMs) * 100), 95);
+    }
+    // No estimate — fake slow ramp to 80% over 5 minutes
+    return Math.min(Math.floor(elapsedSec / 3.75), 80);
+  })();
 
   return {
     isRunning, taskId, status, progress, progressTotal, durationFmt, runningLabel, terminalLines, elapsedSec,
-    pct, fmtElapsed, startTest, stopTest, resumeTask, appendLog, loadResults, loadHistory, loadFailedCases, setTerminalLines,
+    pct, estimatedMs, fmtElapsed, startTest, stopTest, resumeTask, appendLog, loadResults, loadHistory, loadFailedCases, setTerminalLines,
   };
 }

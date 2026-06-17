@@ -115,6 +115,27 @@ public class Dtos {
         public String reason;
     }
 
+    // ── Module tree DTOs ──
+    public static class ModuleDto {
+        public String tag;
+        public String label;
+        public String icon;
+        public String color;
+        public List<ClassDto> classes;
+    }
+
+    public static class ClassDto {
+        public String name;
+        public String type;   // "api" or "ui"
+        public String desc;
+        public List<MethodDto> methods;
+    }
+
+    public static class MethodDto {
+        public String name;   // e.g. "GNYL_012: 根节点新建"
+        public String type;   // "good" or "bad" or null
+    }
+
     public static class ClassResult {
         public String className;
         public int tests;

@@ -8,9 +8,12 @@ import org.example.testvue.entity.TestCaseDetail;
 import org.example.testvue.repository.TestCaseDetailRepository;
 import org.example.testvue.repository.TestHistoryRepository;
 import org.example.testvue.service.MavenTestRunner;
+import org.example.testvue.service.ModuleScanner;
 import org.example.testvue.service.SurefireParser;
 import org.example.testvue.service.TestExecutionService;
 import org.example.testvue.util.AESUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +31,7 @@ public class TestRunnerController {
     private final TestHistoryRepository historyRepo;
     private final TestConfigRepository configRepo;
     private final TestCaseDetailRepository caseDetailRepo;
+    private final ModuleScanner moduleScanner;
     private final AESUtils aes;
 
     public TestRunnerController(TestExecutionService execService,
@@ -35,12 +39,14 @@ public class TestRunnerController {
                                 TestHistoryRepository historyRepo,
                                 TestConfigRepository configRepo,
                                 TestCaseDetailRepository caseDetailRepo,
+                                ModuleScanner moduleScanner,
                                 AESUtils aes) {
         this.execService = execService;
         this.mavenRunner = mavenRunner;
         this.historyRepo = historyRepo;
         this.configRepo = configRepo;
         this.caseDetailRepo = caseDetailRepo;
+        this.moduleScanner = moduleScanner;
         this.aes = aes;
     }
 
@@ -60,7 +66,7 @@ public class TestRunnerController {
 
     @PostMapping("/stop/{taskId}")
     public Map<String, Object> stopTask(@PathVariable String taskId) {
-        execService.stopRun();
+        execService.stopRun(taskId);
         return Map.of("code", 200, "msg", "已停止");
     }
 
@@ -110,16 +116,20 @@ public class TestRunnerController {
     public Map<String, Object> health() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("alive", true);
-        m.put("status", execService.getCurrentStatus().status);
         m.put("isRunning", execService.isRunning());
-        m.put("label", execService.getCurrentStatus().label);
+        m.put("runningTasks", execService.runningTaskCount());
+        Map<String, Object> latest = new LinkedHashMap<>();
+        StatusResponse s = execService.getCurrentStatus();
+        latest.put("taskId", s.taskId);
+        latest.put("status", s.status);
+        latest.put("label", s.label);
+        m.put("latest", latest);
         return m;
     }
 
     @GetMapping("/status")
     public Map<String, Object> getStatus(@RequestParam(value = "taskId", required = false) String taskId) {
-        StatusResponse s = execService.getCurrentStatus();
-        if (taskId != null) s.taskId = taskId;
+        StatusResponse s = execService.getStatus(taskId);
         return s.toMap();
     }
 
@@ -147,18 +157,49 @@ public class TestRunnerController {
         return m;
     }
 
-    // ── History ──
+    // ── History (paginated) ──
 
     @GetMapping("/history")
-    public List<HistoryItem> getHistory() {
-        return historyRepo.findAllByOrderByCreateTimeDesc(PageRequest.of(0, 50)).stream().map(h -> {
-            HistoryItem item = new HistoryItem();
-            item.taskId = h.getTaskId(); item.label = h.getLabel(); item.status = h.getStatus();
-            item.createTime = h.getCreateTime() != null ? h.getCreateTime().toString() : "";
-            item.durationFmt = h.getDurationFmt();
-            item.passed = h.getPassed(); item.failed = h.getFailed(); item.skipped = h.getSkipped();
-            return item;
-        }).collect(Collectors.toList());
+    public Page<HistoryItem> getHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return historyRepo.findAllByOrderByCreateTimeDesc(PageRequest.of(page, size))
+                .map(h -> {
+                    HistoryItem item = new HistoryItem();
+                    item.taskId = h.getTaskId(); item.label = h.getLabel(); item.status = h.getStatus();
+                    item.createTime = h.getCreateTime() != null ? h.getCreateTime().toString() : "";
+                    item.durationFmt = h.getDurationFmt();
+                    item.passed = h.getPassed(); item.failed = h.getFailed(); item.skipped = h.getSkipped();
+                    return item;
+                });
+    }
+
+    @GetMapping("/history/stats")
+    public Map<String, Object> getHistoryStats() {
+        Map<String, Object> stats = new LinkedHashMap<>();
+        // Compute aggregates across all records (cheap — just counts)
+        List<TestHistory> all = historyRepo.findAll();
+        String today = java.time.LocalDate.now().toString();
+        int todayCount = 0, totalPassed = 0, totalFailed = 0, totalSkipped = 0;
+        java.time.LocalDate sevenDaysAgo = java.time.LocalDate.now().minusDays(7);
+        long recentPassed = 0, recentFailed = 0;
+        for (TestHistory h : all) {
+            totalPassed += h.getPassed(); totalFailed += h.getFailed(); totalSkipped += h.getSkipped();
+            if (h.getCreateTime() != null && h.getCreateTime().toLocalDate().equals(java.time.LocalDate.now())) todayCount++;
+            if (h.getCreateTime() != null && h.getCreateTime().toLocalDate().isAfter(sevenDaysAgo.minusDays(1))) {
+                recentPassed += h.getPassed(); recentFailed += h.getFailed();
+            }
+        }
+        long recentTotal = recentPassed + recentFailed;
+        long totalCases = totalPassed + totalFailed + totalSkipped;
+        stats.put("todayCount", todayCount);
+        stats.put("totalCases", totalCases);
+        stats.put("totalPassed", totalPassed);
+        stats.put("totalFailed", totalFailed);
+        stats.put("totalSkipped", totalSkipped);
+        stats.put("recentRate", recentTotal > 0 ? String.format("%.1f", 100.0 * recentPassed / recentTotal) : "—");
+        stats.put("overallRate", (totalPassed + totalFailed) > 0 ? String.format("%.1f", 100.0 * totalPassed / (totalPassed + totalFailed)) : "—");
+        return stats;
     }
 
     @GetMapping("/history/{taskId}/cases")
@@ -201,13 +242,17 @@ public class TestRunnerController {
         return Map.of("code", 200, "msg", "ok");
     }
 
-    // ── Failed cases ──
+    // ── Failed cases (paginated) ──
 
     @GetMapping("/failed-cases")
-    public List<FailedCase> getFailedCases() {
+    public Page<FailedCase> getFailedCases(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<TestHistory> historyPage = historyRepo.findByStatusOrderByCreateTimeDesc("FAILED",
+                PageRequest.of(page, size));
         List<FailedCase> result = new ArrayList<>();
-        for (TestHistory h : historyRepo.findAllByOrderByCreateTimeDesc(PageRequest.of(0, 50))) {
-            if (!"FAILED".equals(h.getStatus()) || h.getResultJson() == null) continue;
+        for (TestHistory h : historyPage.getContent()) {
+            if (h.getResultJson() == null) continue;
             try {
                 List<Map<String, Object>> classes = new com.google.gson.Gson().fromJson(h.getResultJson(),
                     new com.google.gson.reflect.TypeToken<List<Map<String,Object>>>(){}.getType());
@@ -228,7 +273,7 @@ public class TestRunnerController {
                 }
             } catch (Exception ignored) {}
         }
-        return result;
+        return new PageImpl<>(result, PageRequest.of(page, size), historyPage.getTotalElements());
     }
 
     // ── Configs ──
@@ -304,6 +349,13 @@ public class TestRunnerController {
         }
         caseDetailRepo.saveAll(entities);
         return Map.of("code", 200, "msg", "ok", "count", entities.size());
+    }
+
+    // ── Modules ──
+
+    @GetMapping("/modules")
+    public List<ModuleDto> getModules() {
+        return moduleScanner.scan();
     }
 
     // ── Cleanup ──

@@ -42,6 +42,9 @@ public class ReqApiActions {
     private static final String ERM_DEL_REQ_ITEMS    = "/erm/del/delReqObjectList";
     private static final String ERM_RECOVER_REQ_ITEMS = "/erm/recover/recoverReq";
     private static final String ERM_CLEAN_REQ_ITEMS  = "/erm/clean/cleanReq";
+    private static final String ERM_COPY_REQ         = "/erm/update/copyReq";
+    private static final String ERM_CHANGE_REQ_POS   = "/erm/update/changeReqPosition";
+    private static final String ERM_UPDATE_REQ_STATE = "/erm/update/updateReqSpeState";
 
     // ── ERM: Favorite ──
     private static final String ERM_ADD_FAV      = "/erm/add/addFavorite";
@@ -55,6 +58,7 @@ public class ReqApiActions {
 
     // ── ERM: Custom Attribute ──
     private static final String ERM_ATTR_ADD     = "/erm/customAttribute/addCustomAttribute";
+    private static final String ERM_ATTR_CHECK   = "/erm/customAttribute/checkAttribute";
     private static final String ERM_ATTR_SELECT  = "/erm/customAttribute/selectCustomAttributeList";
     private static final String ERM_ATTR_UPDATE  = "/erm/customAttribute/updateCustomAttribute";
     private static final String ERM_ATTR_DELETE  = "/erm/customAttribute/deleteCustomAttributes";
@@ -83,6 +87,24 @@ public class ReqApiActions {
     private static final String ERM_DOWNLOAD_TPL   = "/erm/downloadReqImportTemplate";
     private static final String ERM_IMPORT_ATTR    = "/erm/import/getAttributes";
     private static final String ERM_IMPORT_EXCEL   = "/erm/import/importReqSpecification";
+
+    // ── ReqSpe Info / Update ──
+    private static final String ERM_SEARCH_REQ_SPE_INFO   = "/erm/search/searchReqSpeInfo";
+    private static final String ERM_UPDATE_REQ_SPE_INFO   = "/erm/update/updateReqSpeInfo";
+    private static final String ERM_UPLOAD_REQ_DOC        = "/erm/upload/reqDocUpload";
+    private static final String ERM_DELETE_REQ_DOC        = "/erm/reqDocDelete";
+    private static final String ERM_UPDATE_WRITE_PERM     = "/erm/update/updateReqSpeWritePermission";
+
+    // ── MOE: Indicator (指标管理) ──
+    private static final String MOE = "/moe";
+    private static final String MOE_ADD_STRUCTURE   = MOE + "/add/addLogicStructure";
+    private static final String MOE_SEARCH_STRUCTURE = MOE + "/search/searchLogicStructureList";
+    private static final String MOE_GET_STRUCTURE   = MOE + "/get/getLogicStructureInfo";
+    private static final String MOE_ADD_LOGIC       = MOE + "/add/addLogic";
+    private static final String MOE_SEARCH_LOGIC    = MOE + "/search/searchLogicList";
+    private static final String MOE_GET_LOGIC       = MOE + "/get/getLogicInfo";
+    private static final String MOE_DELETE_LOGIC    = MOE + "/delete/deleteLogic";
+    private static final String MOE_UPDATE_CURRENT  = MOE + "/update/updateCurrent";
 
     // ── ReqIf Import ──
     private static final String ERM_IMPORT_REQIF_DOORS = "/erm/reqIf/get/getAllDoorsParam";
@@ -475,6 +497,25 @@ public class ReqApiActions {
         return post(ERM_CLEAN_REQ_ITEMS, obj("objectId", itemId, "reqSpecId", docId));
     }
 
+    /** Copy a req item to another location. beforeLinkOrderNo controls insert position. */
+    public String copyReq(String parentReqSpeId, String parentId, String objectId, String beforeLinkOrderNo) {
+        JsonObject b = obj("parentReqSpeId", parentReqSpeId, "parentId", parentId,
+            "objectId", objectId, "beforeLinkOrderNo", nvl(beforeLinkOrderNo, ""));
+        return post(ERM_COPY_REQ, b);
+    }
+
+    /** Move/cut a req item to a different position. beforeLinkOrderNo controls insert position. */
+    public String changeReqPosition(String parentId, String objectId, String beforeLinkOrderNo) {
+        JsonObject b = obj("parentId", parentId, "objectId", objectId,
+            "beforeLinkOrderNo", nvl(beforeLinkOrderNo, ""));
+        return post(ERM_CHANGE_REQ_POS, b);
+    }
+
+    /** Switch work state of a req spec: Inwork (工作中) / Frozen (冻结). */
+    public String updateReqSpeState(String objectId, String current) {
+        return post(ERM_UPDATE_REQ_STATE, obj("objectId", objectId, "current", current));
+    }
+
     public String searchChildReqInfo(String objectId) {
         return post(ERM_SEARCH_CHILD_REQ, obj("objectId", objectId));
     }
@@ -494,6 +535,13 @@ public class ReqApiActions {
         return post(ERM_UPDATE_REQ_LIST, b);
     }
 
+    public String editFolderDescription(String projectId, String folderId, String parentId, String description) {
+        return post(ERM_UPDATE_FOLDER,
+            obj("projectId", projectId, "objectId", folderId, "parentId", parentId,
+                "parentType", parentType(projectId, parentId),
+                "description", description));
+    }
+
     public String editDescription(String projectId, String docId, String folderId, String description) {
         return post(ERM_UPDATE_DOC,
             obj("projectId", projectId, "objectId", docId, "parentId", folderId,
@@ -508,6 +556,66 @@ public class ReqApiActions {
 
     public String searchFolderChildren(String projectId, String parentId) {
         return post(ERM_SEARCH_FOLDER_CHILDREN, obj("projectId", projectId, "objectId", parentId));
+    }
+
+    /** Search requirement spec info by objectId. Returns full details (title, description, codingRule, etc.). */
+    public String searchReqSpeInfo(String objectId) {
+        return post(ERM_SEARCH_REQ_SPE_INFO, obj("objectId", objectId));
+    }
+
+    /** Delete an uploaded document/attachment by its objectId. */
+    public String deleteReqDoc(String objectId) {
+        return post(ERM_DELETE_REQ_DOC, obj("objectId", objectId));
+    }
+
+    /** Upload a document file. Returns JSON with downloadURL and objectId. */
+    public String reqDocUpload(Path filePath) {
+        APIResponse resp = request.post(P + ERM_UPLOAD_REQ_DOC,
+            RequestOptions.create()
+                .setMultipart(
+                    com.microsoft.playwright.options.FormData.create()
+                        .set("file", filePath)));
+        return resp.text();
+    }
+
+    /** Update requirement spec info: title, codingRule (prefix), description, file attachments, and custom attributes. */
+    public String updateReqSpeInfo(String projectId, String objectId, String title, String codingRule, String description, String docDataJson) {
+        return updateReqSpeInfo(projectId, objectId, title, codingRule, description, docDataJson, null);
+    }
+
+    /** Update requirement spec info with custom attribute values.
+     *  customAttributeJson format: [{"attrId":"...","value":"..."}, ...] */
+    public String updateReqSpeInfo(String projectId, String objectId, String title, String codingRule,
+                                   String description, String docDataJson, String customAttributeJson) {
+        JsonObject b = obj("projectId", projectId, "objectId", objectId,
+            "title", nvl(title), "codingRule", nvl(codingRule), "description", nvl(description));
+        if (docDataJson != null && !docDataJson.isEmpty()) {
+            try {
+                b.add("docData", JsonParser.parseString(docDataJson));
+            } catch (Exception e) {
+                b.addProperty("docData", docDataJson);
+            }
+        }
+        if (customAttributeJson != null && !customAttributeJson.isEmpty()) {
+            try {
+                b.add("customAttribute", JsonParser.parseString(customAttributeJson));
+            } catch (Exception e) {
+                b.addProperty("customAttribute", customAttributeJson);
+            }
+        }
+        return post(ERM_UPDATE_REQ_SPE_INFO, b);
+    }
+
+    /** Update write permission for a requirement spec. personData format: [{"objectId":"1","userName":"admin"},...] */
+    public String updateReqSpeWritePermission(String objectId, String personDataJson) {
+        JsonObject b = new JsonObject();
+        b.addProperty("objectId", objectId);
+        try {
+            b.add("personData", JsonParser.parseString(personDataJson));
+        } catch (Exception e) {
+            b.addProperty("personData", personDataJson);
+        }
+        return post(ERM_UPDATE_WRITE_PERM, b);
     }
 
     public String getReqSpeList(String projectId) {
@@ -623,6 +731,13 @@ public class ReqApiActions {
             "objectType", "", "name", "", "type", "", "current", "");
     }
 
+    /** 获取已发布的自定义属性列表（用于编辑需求时选择属性） */
+    public String selectCustomAttributeList(String projectId, String businessDomain,
+                                            String objectType, String current) {
+        return get(ERM_ATTR_SELECT, "projectId", projectId, "businessDomain", nvl(businessDomain),
+            "objectType", nvl(objectType), "name", "", "type", "", "current", nvl(current));
+    }
+
     public String searchCustomAttribute(String projectId, String businessDomain, String objectType,
                                         String name, String type, String current) {
         return get(ERM_ATTR_SELECT, "projectId", projectId,
@@ -640,7 +755,26 @@ public class ReqApiActions {
     }
 
     public String publishCustomAttribute(String id, String projectId) {
-        return post(ERM_ATTR_PUBLISH, obj("id", id, "projectId", projectId));
+        JsonArray arr = new JsonArray(); arr.add(id);
+        JsonObject b = new JsonObject();
+        b.addProperty("projectId", projectId);
+        b.add("attributeIds", arr);
+        return postRaw(ERM_ATTR_PUBLISH, b);
+    }
+
+    public String batchPublishCustomAttributes(String projectId, String... ids) {
+        JsonArray arr = new JsonArray();
+        for (String id : ids) arr.add(id);
+        JsonObject b = new JsonObject();
+        b.addProperty("projectId", projectId);
+        b.add("attributeIds", arr);
+        return postRaw(ERM_ATTR_PUBLISH, b);
+    }
+
+    public String checkAttribute(String projectId, String nameEn, String name) {
+        return get(ERM_ATTR_CHECK,
+            "projectId", projectId, "businessDomain", "需求管理",
+            "objectType", "req", "name", nvl(name), "nameEn", nvl(nameEn), "id", "");
     }
 
     public String deleteCustomAttribute(String id) {
@@ -850,15 +984,31 @@ public class ReqApiActions {
         return get(COOP_SEARCH, "title", nvl(keyword), "originated", "");
     }
 
+    /** Find cooperation area ID by name. Returns null if not found. */
+    public String findCooperationAreaId(String name) {
+        String resp = searchCooperationAreaList(name, "");
+        JsonArray data = dataArr(resp);
+        if (data != null) for (JsonElement e : data) {
+            JsonObject o = e.getAsJsonObject();
+            if (name.equals(str(o, "title")) || name.equals(str(o, "name")))
+                return str(o, "objectId", "id");
+        }
+        return null;
+    }
+
     public String addCooperationAreaUser(String areaId, String userId) {
         JsonArray users = new JsonArray();
-        users.add(userId);
+        JsonObject user = new JsonObject();
+        user.addProperty("objectId", userId);
+        users.add(user);
         return post(COOP_ADD_USER, obj("objectId", areaId, "data", users));
     }
 
     public String deleteCooperationAreaUser(String areaId, String userId) {
         JsonArray users = new JsonArray();
-        users.add(userId);
+        JsonObject user = new JsonObject();
+        user.addProperty("objectId", userId);
+        users.add(user);
         return post(COOP_DEL_USER, obj("objectId", areaId, "data", users));
     }
 
@@ -1017,6 +1167,67 @@ public class ReqApiActions {
             return false;
         } catch (Exception e) { return true; }
     }
+
+    // ═══════════════════════ MOE: 指标管理 ═══════════════════════
+
+    private static final String MOE_BASE = TestConfig.BASE_URL.replace("/dev-api","") + "/api-api";
+
+    private String moePost(String path, JsonObject body) {
+        long t0=System.currentTimeMillis();
+        APIResponse resp=request.post(MOE_BASE + path, RequestOptions.create().setHeader("Content-Type","application/json").setData(body.toString()));
+        String text=resp.text();
+        log.info("API POST /api-api{} → HTTP {} ({}ms)",path,resp.status(),System.currentTimeMillis()-t0);
+        return text;
+    }
+    public String addLogicStructure(String name, String desc, String projectId) {
+        return moePost("/moe/add/addLogicStructure", obj("name",name,"description",nvl(desc),"projectId",projectId)); }
+    public String searchLogicStructureList(String projectId) {
+        return moePost("/moe/search/searchLogicStructureList", obj("projectId",projectId)); }
+    public String getLogicStructureInfo(String structureId) {
+        return moePost("/moe/get/getLogicStructureInfo", obj("objectId",structureId)); }
+    public String addLogic(String parentId, String parentType, String name, String type, String logicStructureId, String projectId) {
+        String oid=UUID.randomUUID().toString().replace("-","").substring(0,10);
+        return moePost("/moe/add/addLogic", obj("objectId",oid,"parentId",nvl(parentId),"parentType",nvl(parentType),"name",name,"type",type,"deviceCode","默认设备编码","description","自动测试","level","","logicStructureId",logicStructureId,"addMark",true,"projectId",projectId)); }
+    public String searchLogicList(String structureId) {
+        return moePost("/moe/search/searchLogicList", obj("objectId",structureId)); }
+    public String getLogicInfo(String logicId) {
+        return moePost("/moe/get/getLogicInfo", obj("objectId",logicId)); }
+    public String deleteLogic(String objectId, String logicStructureId) {
+        return moePost("/moe/delete/deleteLogic", obj("objectId",objectId,"logicStructureId",logicStructureId)); }
+    public String deleteLogicStructure(String objectId) {
+        return moePost("/moe/delete/deleteLogicStructure", obj("objectId",objectId)); }
+    public String updateLogicStructure(String objectId, String name, String description) {
+        return moePost("/moe/update/updateLogicStructure", obj("objectId",objectId,"name",nvl(name),"description",nvl(description))); }
+    public String updateLogicCurrent(String objectId, String after) {
+        return moePost("/moe/update/updateCurrent", obj("objectId",objectId,"after",after)); }
+    public String updateLogic(String objectId, String name, String description, String deviceCode, String logicStructureId) {
+        return moePost("/moe/update/updateLogic", obj("objectId",objectId,"name",nvl(name),"description",nvl(description),"deviceCode",nvl(deviceCode,"默认设备编码"),"logicStructureId",logicStructureId)); }
+    public String addLogicStructureParameter(String parentId, String name, String description, String logicStructureId) {
+        String oid=UUID.randomUUID().toString().replace("-","").substring(0,10);
+        JsonObject constraints=new JsonObject();
+        constraints.addProperty("type","文本"); constraints.add("value",new JsonArray());
+        return moePost("/moe/add/addLogicStructureParameter", obj("objectId",oid,"parentId",parentId,"name",name,"description",nvl(description,"自动测试"),"parameterUnit","","indexValue","","constraints",constraints,"logicStructureId",logicStructureId,"type","index","addMark",true)); }
+    public String updateLogicStructureParameter(String objectId, String name, String description, String unit, String indexValue, String constraintType, String logicStructureId) {
+        JsonObject constraints=new JsonObject();
+        constraints.addProperty("type",nvl(constraintType,"文本")); constraints.add("value",new JsonArray());
+        return moePost("/moe/update/updateLogicStructureParameter", obj("objectId",objectId,"name",nvl(name),"description",nvl(description),"parameterUnit",nvl(unit),"indexValue",nvl(indexValue),"constraints",constraints,"logicStructureId",logicStructureId)); }
+    // 复制逻辑节点(全量JSON发addLogic)
+    public String copyLogic(String logicJson, String parentId, String newName, String logicStructureId) {
+        JsonObject node=JsonParser.parseString(logicJson).getAsJsonObject().getAsJsonObject("data");
+        node.addProperty("name",newName); node.addProperty("title",newName);
+        node.addProperty("parentId",nvl(parentId)); node.addProperty("parentType",node.has("type")?node.get("type").getAsString():"system");
+        node.addProperty("logicStructureId",logicStructureId); node.addProperty("addMark",true);
+        node.remove("objectId"); String oid=UUID.randomUUID().toString().replace("-","").substring(0,10); node.addProperty("objectId",oid);
+        return moePost("/moe/add/addLogic", node); }
+    // 导出架构Excel
+    public APIResponse downloadExcelLogic(String structureId) {
+        return request.post(MOE_BASE+"/moe/download/downloadExcelLogic", RequestOptions.create().setHeader("Content-Type","application/json").setData("{\"objectId\":\""+structureId+"\"}")); }
+    // 导出指标Excel
+    public APIResponse downloadExcelAIndex(String logicId) {
+        return request.post(MOE_BASE+"/moe/download/downloadExcelAIndex", RequestOptions.create().setHeader("Content-Type","application/json").setData("{\"objectId\":\""+logicId+"\"}")); }
+    // 下载指标模板
+    public APIResponse downloadMetricTemplateExcel(String type) {
+        return request.post(MOE_BASE+"/moe/download/downloadMetricTemplateExcel", RequestOptions.create().setHeader("Content-Type","application/json").setData("{\"type\":\""+type+"\"}")); }
 
     // ═══════════════════════ Internal HTTP ═══════════════════════
 

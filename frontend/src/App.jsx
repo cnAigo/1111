@@ -15,12 +15,14 @@ import Results from './pages/Results';
 import History from './pages/History';
 import FailedCases from './pages/FailedCases';
 import SettingsPage from './pages/Settings';
+import Coverage from './pages/Coverage';
 
 export default function App() {
   const navigate = useNavigate();
   const store = useTestStore();
 
   const [selected, setSelected] = useState(new Set());
+  const [modules, setModules] = useState(MODULES);
   const [toast, setToast] = useState(null);
   const [cleaning, setCleaning] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState({});
@@ -46,6 +48,15 @@ export default function App() {
   }, [config.cfgUrl, config.cfgProjectId, config.cfgUsername, config.cfgPassword, showToast]);
 
   useEffect(() => { store.init(); }, []);
+
+  // Fetch module tree from backend (static MODULES already set as initial fallback)
+  useEffect(() => {
+    request.get('/api/test/modules').then(({ data }) => {
+      if (Array.isArray(data) && data.length > 0) setModules(data);
+    }).catch(() => {
+      showToast('无法连接后端服务，使用本地模块数据', 'warning');
+    });
+  }, []);
 
   // ── Cleaning state sync ──
   useEffect(() => {
@@ -204,15 +215,16 @@ export default function App() {
         <div className="flex-1 flex flex-col min-h-0 bg-slate-50/80">
           <Routes>
             <Route path="/" element={
-              <Dashboard modules={MODULES} selected={selected} onToggle={toggleSelect}
+              <Dashboard modules={modules} selected={selected} onToggle={toggleSelect}
                 onStart={wrappedStart} onStop={() => store.stopTest()} onCleanup={onCleanupAction}
                 cleaning={cleaning} selectedCount={selected.size} />
             } />
             <Route path="/results" element={<Results />} />
             <Route path="/history" element={<History onRerun={onRerun} onDelete={onDeleteHistory}
               expandedHistory={expandedHistory} onToggleExpand={toggleHistoryExpand} />} />
-            <Route path="/failed" element={<FailedCases onRerunClass={onRerunClass} />} />
+            <Route path="/failed" element={<FailedCases modules={modules} onRerunClass={onRerunClass} />} />
             <Route path="/settings" element={<SettingsPage onOpen={() => { config.setConfigOpen(true); config.loadConfigs(); }} />} />
+            <Route path="/coverage" element={<Coverage />} />
           </Routes>
         </div>
       </div>
