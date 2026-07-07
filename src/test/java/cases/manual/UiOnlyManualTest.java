@@ -11,6 +11,7 @@ import org.junit.jupiter.api.*;
 @Tag("ReqFolderModule")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UiOnlyManualTest extends ApiTestHelper {
+    { needsClassCooperationArea = false; } // UI-only notes — no API calls
 
     @Test @DisplayName("14. 需求规格检索 — 仅UI")
     void test_14_searchReqSpec() { log.info("14. 需求规格检索: 仅UI"); }

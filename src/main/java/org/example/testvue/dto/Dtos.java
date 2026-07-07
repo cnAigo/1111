@@ -122,6 +122,7 @@ public class Dtos {
         public String icon;
         public String color;
         public List<ClassDto> classes;
+        public List<ModuleDto> children;
     }
 
     public static class ClassDto {
@@ -129,6 +130,7 @@ public class Dtos {
         public String type;   // "api" or "ui"
         public String desc;
         public List<MethodDto> methods;
+        public int caseCount;
     }
 
     public static class MethodDto {

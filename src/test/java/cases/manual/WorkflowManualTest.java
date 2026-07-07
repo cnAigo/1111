@@ -9,6 +9,7 @@ import org.junit.jupiter.api.*;
 @Tag("ReqFolderModule")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class WorkflowManualTest extends ApiTestHelper {
+    { needsClassCooperationArea = false; } // placeholder — no API calls
 
     @Test @DisplayName("49. 另存为草稿")
     void test_4901() {

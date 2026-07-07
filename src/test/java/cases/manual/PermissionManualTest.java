@@ -4,7 +4,6 @@ import actions.ReqApiActions;
 import base.ApiTestHelper;
 import base.AuthHelper;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.microsoft.playwright.APIRequest;
@@ -17,24 +16,21 @@ import org.junit.jupiter.api.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class PermissionManualTest extends ApiTestHelper {
 
-    private static final String REAL_PROJECT_ID = "2058851105448046592";
     private static final String TEST_USER = "11";
     private static final String TEST_PWD = "Aa123456";
-    private static final String COOP_USER_OBJ_ID = "384"; // test用户的objectId
-    private String user11ObjId; // 运行时查询
+    private String user11ObjId;
 
     @Override
     @BeforeAll
     public void setupApi() {
+        needsClassCooperationArea = false;
         super.setupApi();
-        PROJECT_ID = REAL_PROJECT_ID;
     }
 
-    // ═══ 80. 写入权限校验（两文档对比） ═══
-
+    // ═══ 80.1 写入权限 — 两文档对比 ═══
     @Test @DisplayName("80.1 创建合作区+两文档，一个有权限一个没有")
     void test_8001_permissionFlow() {
-        // ── Step 1: 创建合作区，分配 test 用户 ──
+        user11ObjId = findUserObjectId(TEST_USER);
         String n = "AT_Perm_" + suffix();
         String r = api.addCooperationArea(n, "AT_PC_" + suffix(), "内部", "auto");
         JsonObject resp = JsonParser.parseString(r).getAsJsonObject();
@@ -45,123 +41,161 @@ public class PermissionManualTest extends ApiTestHelper {
                 : resp.getAsJsonObject("data").get("id").getAsString()
             : api.findCooperationAreaId(n);
         Assertions.assertNotNull(areaId);
-        api.addCooperationAreaUser(areaId, COOP_USER_OBJ_ID);
-        log.info("80.1-1 合作区+分配test(384): areaId={}", areaId);
+        api.addCooperationAreaUser(areaId, user11ObjId);
 
-        // ── Step 2: 创建两个需求规格 ──
         String[] d1 = createTempDoc();
-        String docA = d1[0], folderA = d1[2];
+        String docA = d1[0];
         String[] d2 = createTempDoc();
-        String docB = d2[0], folderB = d2[2];
-        Assertions.assertNotNull(docA);
-        Assertions.assertNotNull(docB);
-        log.info("80.1-2 docA(有权限)={}, docB(无权限)={}", docA, docB);
+        String docB = d2[0];
 
-        // ── Step 3: 查询11的objectId，docA给admin+11，docB仅admin ──
-        user11ObjId = findUserObjectId(TEST_USER);
-        log.info("80.1-3 11的objectId={}", user11ObjId);
-        String permA = api.updateReqSpeWritePermission(docA,
+        api.updateReqSpeWritePermission(docA,
             "[{\"objectId\":\"1\",\"userName\":\"admin\"},{\"objectId\":\"" + user11ObjId + "\",\"userName\":\"" + TEST_USER + "\"}]");
-        log.info("80.1-3 docA权限设置 resp={}", permA.substring(0, Math.min(100, permA.length())));
         api.updateReqSpeWritePermission(docB,
             "[{\"objectId\":\"1\",\"userName\":\"admin\"}]");
 
-        // ── Step 4: 获取masterId，11登录checkOpenMode对比 ──
-        String masterA = getMasterId(docA);
-        String masterB = getMasterId(docB);
-        log.info("80.1-4 masterA={}, masterB={}", masterA, masterB);
+        Assertions.assertTrue(checkAccessAs11(getMasterId(docA), "dblClick"), "docA给了11权限应有访问权");
+        Assertions.assertFalse(checkAccessAs11(getMasterId(docB), "dblClick"), "docB仅admin权限11应无访问权");
 
-        Playwright pw = Playwright.create();
-        APIRequestContext ctx = pw.request().newContext(new APIRequest.NewContextOptions()
-            .setIgnoreHTTPSErrors(true)
-            .setExtraHTTPHeaders(java.util.Map.of("ProjectId", REAL_PROJECT_ID)));
-        AuthHelper.login(ctx, TEST_USER, TEST_PWD);
-        ctx.get(TestConfig.BASE_URL + "/login-api/auth/subapp/getList");
-        ReqApiActions api11 = new ReqApiActions(ctx);
-        try {
-            String rA = api11.checkOpenMode(masterA, "dblClick", TEST_USER);
-            String rB = api11.checkOpenMode(masterB, "dblClick", TEST_USER);
-            boolean accessA = parseHasAccess(rA);
-            boolean accessB = parseHasAccess(rB);
-            log.info("80.1-4 docA={}", rA);
-            log.info("80.1-4 docB={}", rB);
-            Assertions.assertTrue(accessA, "docA给了11权限应有访问权");
-            Assertions.assertFalse(accessB, "docB仅admin权限11应无访问权");
-        } finally {
-            ctx.dispose();
-            pw.close();
-        }
-
-        // ── 清理 ──
         api.deleteCooperationArea(areaId);
-        log.info("80.1-5 清理完成");
+        log.info("80.1 两文档权限对比(正向) 通过");
     }
 
     // ═══ 80.2 admin删自己权限 ═══
-
     @Test @DisplayName("80.2 admin把自己从写入权限中移除")
     void test_8002_adminRemoveSelf() {
-        // admin创建文档，设权限仅11（排除自己），然后check
         String[] d = createTempDoc();
         String docId = d[0];
-        log.info("80.2 admin创建文档: docId={}", docId);
-
-        // admin把自己移除，只留11
-        String permResp = api.updateReqSpeWritePermission(docId,
-            "[{\"objectId\":\"" + (user11ObjId != null ? user11ObjId : findUserObjectId(TEST_USER)) + "\",\"userName\":\"" + TEST_USER + "\"}]");
-        log.info("80.2 设权限仅11 resp={}", permResp.substring(0, Math.min(150, permResp.length())));
-
-        // admin再去checkOpenMode → 看系统拦不拦
-        String master = getMasterId(docId);
-        String r = api.checkOpenMode(master, "dblClick", TestConfig.ADMIN_USER);
-        boolean hasAccess = parseHasAccess(r);
-        log.info("80.2 admin checkOpenMode hasAccess={}", hasAccess);
-        log.info("80.2 完整响应: {}", r);
+        if (user11ObjId == null) user11ObjId = findUserObjectId(TEST_USER);
+        api.updateReqSpeWritePermission(docId,
+            "[{\"objectId\":\"" + user11ObjId + "\",\"userName\":\"" + TEST_USER + "\"}]");
+        boolean hasAccess = parseHasAccess(api.checkOpenMode(getMasterId(docId), "dblClick", TestConfig.ADMIN_USER));
+        log.info("80.2 admin删自己后访问权={}", hasAccess);
     }
 
     // ═══ 80.3 admin不被权限限制 ═══
-
     @Test @DisplayName("80.3 普通用户设权限仅自己，admin仍可访问")
     void test_8003_adminAlwaysHasAccess() {
-        // 用11身份创建一个权限仅11的文档，admin来check
+        if (user11ObjId == null) user11ObjId = findUserObjectId(TEST_USER);
         Playwright pw = Playwright.create();
         APIRequestContext ctx = pw.request().newContext(new APIRequest.NewContextOptions()
             .setIgnoreHTTPSErrors(true)
-            .setExtraHTTPHeaders(java.util.Map.of("ProjectId", REAL_PROJECT_ID)));
+            .setExtraHTTPHeaders(java.util.Map.of("ProjectId", PROJECT_ID)));
         AuthHelper.login(ctx, TEST_USER, TEST_PWD);
         ctx.get(TestConfig.BASE_URL + "/login-api/auth/subapp/getList");
         ReqApiActions api11 = new ReqApiActions(ctx);
         try {
-            // 11创建文件夹和文档
-            String folderId = api.createFolder(REAL_PROJECT_ID, REAL_PROJECT_ID);
-            String docId = api.createDocument(REAL_PROJECT_ID, folderId);
-            api.renameDocument(REAL_PROJECT_ID, docId, folderId, "AT_Doc_11_" + suffix());
-
-            // 11设写入权限仅自己（排除admin）
-            user11ObjId = findUserObjectId(TEST_USER);
+            String folderId = api.createFolder(PROJECT_ID, PROJECT_ID);
+            String docId = api.createDocument(PROJECT_ID, folderId);
+            api.renameDocument(PROJECT_ID, docId, folderId, "AT_Doc_11_" + suffix());
             api11.updateReqSpeWritePermission(docId,
                 "[{\"objectId\":\"" + user11ObjId + "\",\"userName\":\"" + TEST_USER + "\"}]");
-            log.info("80.3 11创建文档并设权限仅自己: docId={}", docId);
+            Assertions.assertTrue(parseHasAccess(api.checkOpenMode(getMasterId(docId), "dblClick", TestConfig.ADMIN_USER)),
+                "admin应始终有访问权");
+        } finally { ctx.dispose(); pw.close(); }
+        log.info("80.3 admin绕过权限限制(正向) 通过");
+    }
 
-            // admin来查 → 应该有权限
-            String master = getMasterId(docId);
-            String r = api.checkOpenMode(master, "dblClick", TestConfig.ADMIN_USER);
-            boolean hasAccess = parseHasAccess(r);
-            log.info("80.3 admin checkOpenMode={}", r);
-            Assertions.assertTrue(hasAccess, "admin应始终有访问权");
-        } finally {
-            ctx.dispose();
-            pw.close();
-        }
+    // ═══ 80.4 赋权→撤销 ═══
+    @Test @DisplayName("80.4 赋权后撤销用户，验证访问被拒绝")
+    void test_8004_grantThenRevoke() {
+        user11ObjId = findUserObjectId(TEST_USER);
+        String[] d = createTempDoc();
+        String docId = d[0];
+        api.updateReqSpeWritePermission(docId,
+            "[{\"objectId\":\"" + user11ObjId + "\",\"userName\":\"" + TEST_USER + "\"}]");
+        String master = getMasterId(docId);
+
+        Assertions.assertTrue(checkAccessAs11(master, "dblClick"), "赋权后11应有访问权");
+        api.updateReqSpeWritePermission(docId, "[{\"objectId\":\"1\",\"userName\":\"admin\"}]");
+        Assertions.assertFalse(checkAccessAs11(master, "dblClick"), "撤销后11应无访问权");
+        log.info("80.4 赋权后撤销(正向) 通过");
+    }
+
+    // ═══ 80.5 锁定后写入拦截 ═══
+    @Test @DisplayName("80.5 锁定文档后用户无法编辑(负向)")
+    void test_8005_lockedCantEdit() {
+        user11ObjId = findUserObjectId(TEST_USER);
+        String[] d = createTempDoc();
+        String docId = d[0];
+        api.updateReqSpeWritePermission(docId,
+            "[{\"objectId\":\"" + user11ObjId + "\",\"userName\":\"" + TEST_USER + "\"}]");
+        api.unlockMode(docId, "lock", "admin");
+
+        Assertions.assertFalse(checkAccessAs11(getMasterId(docId), "edit"), "锁定后用户应无法编辑");
+        api.unlockMode(docId, "unlock", "admin");
+        log.info("80.5 锁定后无法编辑(负向) 通过");
+    }
+
+    // ═══ 80.6 冻结后无法写入 ═══
+    @Test @DisplayName("80.6 冻结后无法写入(负向)")
+    void test_8006_frozenNoWrite() {
+        String[] d = createTempDoc();
+        String docId = d[0];
+        api.updateReqSpeState(docId, "Frozen");
+        Assertions.assertFalse(parseHasAccess(api.checkOpenMode(getMasterId(docId), "edit", TestConfig.ADMIN_USER)),
+            "冻结后即使admin也应无法编辑");
+        api.updateReqSpeState(docId, "Inwork");
+        log.info("80.6 冻结后无法写入(负向) 通过");
+    }
+
+    // ═══ 80.7 读取权限状态 ═══
+    @Test @DisplayName("80.7 getReqAccess读取权限状态(正向)")
+    void test_8007_getAccess() {
+        user11ObjId = findUserObjectId(TEST_USER);
+        String[] d = createTempDoc();
+        api.updateReqSpeWritePermission(d[0],
+            "[{\"objectId\":\"1\",\"userName\":\"admin\"},{\"objectId\":\"" + user11ObjId + "\",\"userName\":\"" + TEST_USER + "\"}]");
+        String r = api.getReqAccess(d[0]);
+        Assertions.assertTrue(r.contains("\"code\":200"), "getReqAccess应返回200");
+        log.info("80.7 getReqAccess(正向) 通过");
+    }
+
+    // ═══ 80.8 无权限 ═══
+    @Test @DisplayName("80.8 完全不授权→用户无任何访问权")
+    void test_8008_noPermission() {
+        String[] d = createTempDoc();
+        api.updateReqSpeWritePermission(d[0], "[{\"objectId\":\"1\",\"userName\":\"admin\"}]");
+        Assertions.assertFalse(checkAccessAs11(getMasterId(d[0]), "dblClick"), "未授权用户不应有访问权");
+        log.info("80.8 完全不授权(正向) 通过");
+    }
+
+    // ═══ 80.9 空权限列表 ═══
+    @Test @DisplayName("80.9 设置空权限列表(负向)")
+    void test_8009_emptyPermList() {
+        String[] d = createTempDoc();
+        assertRejected(api.updateReqSpeWritePermission(d[0], "[]"), "权限列表不可为空");
+        log.info("80.9 空权限列表(负向) 通过");
+    }
+
+    // ═══ 80.10 重复授权 ═══
+    @Test @DisplayName("80.10 权限列表含重复用户(负向)")
+    void test_8010_dupUser() {
+        String[] d = createTempDoc();
+        assertRejected(api.updateReqSpeWritePermission(d[0],
+            "[{\"objectId\":\"1\",\"userName\":\"admin\"},{\"objectId\":\"1\",\"userName\":\"admin\"}]"), "不可重复授权");
+        log.info("80.10 重复授权同一用户(负向) 通过");
+    }
+
+    // ── Helpers ──
+
+    /** Login as test user and check open-mode access. Handles Playwright lifecycle. */
+    private boolean checkAccessAs11(String masterId, String operation) {
+        Playwright pw = Playwright.create();
+        APIRequestContext ctx = pw.request().newContext(new APIRequest.NewContextOptions()
+            .setIgnoreHTTPSErrors(true)
+            .setExtraHTTPHeaders(java.util.Map.of("ProjectId", PROJECT_ID)));
+        AuthHelper.login(ctx, TEST_USER, TEST_PWD);
+        ctx.get(TestConfig.BASE_URL + "/login-api/auth/subapp/getList");
+        try {
+            return parseHasAccess(new ReqApiActions(ctx).checkOpenMode(masterId, operation, TEST_USER));
+        } finally { ctx.dispose(); pw.close(); }
     }
 
     private static boolean parseHasAccess(String json) {
         JsonObject ar = JsonParser.parseString(json).getAsJsonObject();
         if (!ar.has("data") || ar.get("data").isJsonNull()) return false;
         JsonObject data = ar.getAsJsonObject("data");
-        // getReqAccess returns data.flag
         if (data.has("flag")) return data.get("flag").getAsBoolean();
-        // checkOpenMode returns data.hasAccess
         if (data.has("hasAccess")) return data.get("hasAccess").getAsBoolean();
         return false;
     }
@@ -181,7 +215,7 @@ public class PermissionManualTest extends ApiTestHelper {
 
     private String findUserObjectId(String loginName) {
         try {
-            String resp = api.searchProjectPersonList(REAL_PROJECT_ID);
+            String resp = api.searchProjectPersonList(PROJECT_ID);
             JsonArray data = JsonParser.parseString(resp).getAsJsonObject().getAsJsonArray("data");
             if (data != null) for (var e : data) {
                 JsonObject u = e.getAsJsonObject();
@@ -189,6 +223,7 @@ public class PermissionManualTest extends ApiTestHelper {
                     return u.get("objectId").getAsString();
             }
         } catch (Exception ex) { log.warn("查找用户objectId失败: {}", ex.getMessage()); }
-        return "11"; // fallback
+        Assertions.fail("未在项目人员列表中找到用户: " + loginName);
+        return null;
     }
 }

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.*;
 @Tag("ReqFolderModule")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FlowDefineManualTest extends ApiTestHelper {
+    { needsClassCooperationArea = false; } // placeholder — no API calls
 
     @Test @DisplayName("43. 流程定义(占位)")
     void test_4301() { log.info("43. 流程定义: TODD"); }

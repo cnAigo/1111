@@ -34,6 +34,13 @@ public class SurefireParser {
                     cr.cases     = new ArrayList<>();
 
                     NodeList testcases = doc.getElementsByTagName("testcase");
+                    // Deduplication map keyed by "className#methodName".
+                    // Retried tests produce duplicate <testcase> entries for the
+                    // same logical test method — we keep only the best outcome:
+                    // a passing retry replaces a failure; otherwise the first
+                    // occurrence wins.  Aggregate counts are recalculated from
+                    // the deduplicated set so the progress bar never exceeds 100%.
+                    Map<String, TestCaseResult> dedupMap = new LinkedHashMap<>();
                     for (int i = 0; i < testcases.getLength(); i++) {
                         Element tc = (Element) testcases.item(i);
                         TestCaseResult tcr = new TestCaseResult();
@@ -62,8 +69,33 @@ public class SurefireParser {
                             tcr.status = "PASS";
                             tcr.reason = "";
                         }
-                        cr.cases.add(tcr);
+
+                        // Unique identity = class name + method name.
+                        // A single test method may appear more than once when
+                        // surefire rerunFailingTestsCount > 0 or when the runner
+                        // forks multiple JVMs.  The dedup key collapses those
+                        // duplicates into one definitive result per method.
+                        String dedupKey = cr.className + "#" + tcr.name;
+                        TestCaseResult existing = dedupMap.get(dedupKey);
+                        if (existing == null) {
+                            dedupMap.put(dedupKey, tcr);
+                        } else if ("FAIL".equals(existing.status) && "PASS".equals(tcr.status)) {
+                            // A previously-failing test passed on retry —
+                            // replace the failed record with the passing one.
+                            dedupMap.put(dedupKey, tcr);
+                        }
+                        // If existing is already PASS, or both are FAIL,
+                        // keep the first occurrence — later retries are redundant.
                     }
+
+                    // Recalculate aggregate counts from the deduplicated set
+                    // so the totals always reflect unique test cases, never
+                    // inflated by retry duplicates.
+                    cr.cases = new ArrayList<>(dedupMap.values());
+                    cr.tests = cr.cases.size();
+                    cr.failures = (int) cr.cases.stream().filter(c -> "FAIL".equals(c.status)).count();
+                    cr.errors = 0;
+                    cr.skipped = 0;
                     list.add(cr);
                 } catch (Exception e) { LOG.warn("Failed to parse {}: {}", f.getFileName(), e.getMessage()); }
             }

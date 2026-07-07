@@ -1,12 +1,26 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { resolve } from 'path'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+        silenceDeprecations: ['legacy-js-api'],
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8080',
+      '^/api/': 'http://localhost:8080',
       '/ws': { target: 'http://localhost:8080', ws: true },
       '/allure-report': 'http://localhost:8080',
       '/dev-api': {
@@ -20,4 +34,4 @@ export default defineConfig({
     outDir: '../src/main/resources/static',
     emptyOutDir: true,
   },
-});
+})

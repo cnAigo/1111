@@ -7,6 +7,7 @@ import org.junit.jupiter.api.*;
 @Tag("IndicatorModule")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IndicatorManualTest extends ApiTestHelper {
+    { needsClassCooperationArea = false; } // indicators operate at project level — no sandbox needed
 
     private String structureId; // shared root node for tests
 
@@ -36,7 +37,7 @@ public class IndicatorManualTest extends ApiTestHelper {
     @Test @DisplayName("82.6 超长名称(负向)")
     void test_8206_longName() { String r=api.addLogicStructure("A".repeat(200),"",PROJECT_ID); assertRejected(r,"超长"); log.info("82.6 超长名称(负向) 通过"); }
     @Test @DisplayName("82.7 XSS名称(负向)")
-    void test_8207_xssName() { String r=api.addLogicStructure("<img src=x onerror=alert(1)>","",PROJECT_ID); log.info("82.7 code={}",JsonParser.parseString(r).getAsJsonObject().get("code").getAsInt()); }
+    void test_8207_xssName() { String r=api.addLogicStructure("<img src=x onerror=alert(1)>","",PROJECT_ID); assertRejected(r,"XSS"); log.info("82.7 XSS名称(负向) 通过"); }
 
     // ═══ 83. 添加指标根节点(唯一) ═══
     @Test @DisplayName("83.1 添加指标根节点-system(正向)")
@@ -94,7 +95,7 @@ public class IndicatorManualTest extends ApiTestHelper {
     @Test @DisplayName("87.7 空名称(负向)")
     void test_8707_emptyName() { String r=api.addLogic("","","","system",structureId,PROJECT_ID); assertRejected(r,"空名称"); log.info("87.7 空名称(负向) 通过"); }
     @Test @DisplayName("87.8 XSS名称(负向)")
-    void test_8708_xssName() { String r=api.addLogic("","","<img src=x onerror=alert(1)>","system",structureId,PROJECT_ID); log.info("87.8 code={}",JsonParser.parseString(r).getAsJsonObject().get("code").getAsInt()); }
+    void test_8708_xssName() { String r=api.addLogic("","","<img src=x onerror=alert(1)>","system",structureId,PROJECT_ID); assertRejected(r,"XSS"); log.info("87.8 XSS名称(负向) 通过"); }
     @Test @DisplayName("87.9 无效parentId(负向)")
     void test_8709_invalidParent() { String r=api.addLogic("","","AT_InvP_"+suffix(),"system","invalid_99999",PROJECT_ID); assertRejected(r,"不存在"); log.info("87.9 无效parentId(负向) 通过"); }
 
@@ -105,6 +106,8 @@ public class IndicatorManualTest extends ApiTestHelper {
     void test_8802_invalid() { String r=api.deleteLogic("invalid_99999",structureId); assertRejected(r,"不存在节点"); log.info("88.2 删除不存在节点(负向) 通过"); }
     @Test @DisplayName("88.3 删除有子节点的节点(负向)")
     void test_8803_deleteWithChild() { String addR=api.addLogic("","","AT_Parent_"+suffix(),"system",structureId,PROJECT_ID); String parentId=api.extractId(addR); if(parentId!=null){ api.addLogic(parentId,"system","AT_Child_"+suffix(),"system",structureId,PROJECT_ID); String r=api.deleteLogic(parentId,structureId); assertRejected(r,"有子节点不可删除"); } log.info("88.3 删除有子节点的节点(负向) 通过"); }
+    @Test @DisplayName("88.4 删除逻辑架构根节点(正向)")
+    void test_8804_deleteStructure() { String r=api.addLogicStructure("AT_DelStruct_"+suffix(),"待删除",PROJECT_ID); Assertions.assertTrue(r.contains("\"code\":200")); String list=api.searchLogicStructureList(PROJECT_ID); com.google.gson.JsonArray arr=com.google.gson.JsonParser.parseString(list).getAsJsonObject().getAsJsonArray("data"); String sid=null; if(arr!=null) for(var e:arr){ var o=e.getAsJsonObject(); if(o.has("name")&&o.get("name").getAsString().startsWith("AT_DelStruct_")){sid=o.get("objectId").getAsString();break;} } if(sid!=null){ String dr=api.deleteLogicStructure(sid); Assertions.assertEquals(200,JsonParser.parseString(dr).getAsJsonObject().get("code").getAsInt(),"删除根节点应成功"); } log.info("88.4 删除逻辑架构根节点(正向) 通过"); }
     @Test @DisplayName("89.1 编辑描述(正向)")
     void test_8901_editDesc() { String addR=api.addLogic("","","AT_Edit_"+suffix(),"system",structureId,PROJECT_ID); String id=api.extractId(addR); if(id!=null){ String r=api.updateLogic(id,"","编辑描述","",structureId); Assertions.assertEquals(200,JsonParser.parseString(r).getAsJsonObject().get("code").getAsInt()); } log.info("89.1 编辑描述(正向) 通过"); }
     @Test @DisplayName("89.2 编辑设备编码(正向)")
@@ -141,4 +144,6 @@ public class IndicatorManualTest extends ApiTestHelper {
     void test_9107_constraints() { String addR=api.addLogic("","","AT_Dev7_"+suffix(),"equipment",structureId,PROJECT_ID); String devId=api.extractId(addR); if(devId!=null){ String pr=api.addLogicStructureParameter(devId,"AT_P7_"+suffix(),"约束测试",structureId); String paramId=api.extractId(pr); if(paramId!=null){ String r=api.updateLogicStructureParameter(paramId,"","","","","约束表达式",structureId); Assertions.assertEquals(200,JsonParser.parseString(r).getAsJsonObject().get("code").getAsInt()); } } log.info("91.7 编辑约束条件(正向) 通过"); }
     @Test @DisplayName("91.8 需求值为负数(负向)")
     void test_9108_negativeVal() { String addR=api.addLogic("","","AT_Dev8_"+suffix(),"equipment",structureId,PROJECT_ID); String devId=api.extractId(addR); if(devId!=null){ String pr=api.addLogicStructureParameter(devId,"AT_P8_"+suffix(),"负值测试",structureId); String paramId=api.extractId(pr); if(paramId!=null){ String r=api.updateLogicStructureParameter(paramId,"","","","-1","",structureId); assertRejected(r,"负数"); } } log.info("91.8 需求值为负数(负向) 通过"); }
+    @Test @DisplayName("91.9 同设备下重复添加指标参数(负向)")
+    void test_9109_dupParam() { String addR=api.addLogic("","","AT_Dev9_"+suffix(),"equipment",structureId,PROJECT_ID); String devId=api.extractId(addR); if(devId!=null){ String n="AT_DupParam_"+suffix(); api.addLogicStructureParameter(devId,n,"第一次",structureId); String r=api.addLogicStructureParameter(devId,n,"第二次",structureId); assertRejected(r,"参数名称不可重复"); } log.info("91.9 同设备下重复添加指标参数(负向) 通过"); }
 }

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -195,25 +196,43 @@ public class TestExecutionService {
             }
         }
 
-        int total = mavenRunner.countTestCases(req);
-        if (total <= 0) total = 1;
+        // Count test classes for the progress bar denominator.
+        // Class-level progress gives the frontend more frequent updates
+        // (one per class) than method-level counting.
+        int totalClasses = mavenRunner.countTestClasses(req);
+        if (totalClasses <= 0) totalClasses = 1;
 
         long estimatedMs = mavenRunner.calculateExpectedMs(req);
 
         TestHistory h = TestHistory.of(tid, lb, "RUNNING", "", 0, 0, 0, "", "");
         h.setProgress(0);
-        h.setProgressTotal(total);
+        h.setProgressTotal(totalClasses);
         h.setEstimatedMs(estimatedMs);
         historyRepo.save(h);
 
         TestTaskContext ctx = new TestTaskContext(tid, lb);
-        ctx.progressTotal = total;
+        ctx.progressTotal = totalClasses;
         tasks.put(tid, ctx);
 
         // Push initial 0/total so frontend shows progress bar from the start
-        wsManager.pushProgress(tid, 0, total);
+        wsManager.pushProgress(tid, 0, totalClasses);
 
-        appCtx.getBean(TestExecutionService.class).executeRunAsync(tid, req, lb);
+        // Dispatch to the async executor.  If the pool + queue are full
+        // the AbortPolicy in AsyncConfig throws RejectedExecutionException
+        // immediately — we catch it, mark the DB record as FAILED so the
+        // frontend can surface the reason, and return null so the controller
+        // returns HTTP 409 (conflict / server busy).
+        try {
+            appCtx.getBean(TestExecutionService.class).executeRunAsync(tid, req, lb);
+        } catch (RejectedExecutionException e) {
+            LOG.warn("Executor rejected task {} — server at capacity", tid);
+            // Reuse the TestHistory record we just persisted above
+            h.setStatus("FAILED");
+            h.setErrorMessage("Server busy — maximum concurrent test runs reached. Please wait and retry.");
+            historyRepo.save(h);
+            tasks.remove(tid);
+            return null;
+        }
         return tid;
     }
 

@@ -4,19 +4,26 @@ import base.ApiTestHelper;
 import actions.CoopHelper;
 import org.junit.jupiter.api.*;
 
+/**
+ * Cooperation area CRUD tests.
+ *
+ * Each test method creates its own cooperation area(s), operates on them,
+ * and tears them down individually — no shared state between methods.
+ * The project context ({@code PROJECT_ID}) comes from the environment
+ * ({@code TAAS_PROJECT_ID}) or {@code TestConstants}, never hardcoded.
+ */
 @Tag("CollaborationModule")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CooperationManualTest extends ApiTestHelper {
 
-    private static final String REAL_PROJECT_ID = "2058851105448046592";
     private CoopHelper c;
 
     @Override
     @BeforeAll
     public void setupApi() {
+        needsClassCooperationArea = false; // cooperation areas are top-level — no sandbox needed
         super.setupApi();
-        PROJECT_ID = REAL_PROJECT_ID;
-        c = new CoopHelper(api, this::suffix, REAL_PROJECT_ID);
+        c = new CoopHelper(api, this::suffix, PROJECT_ID);
     }
 
     // ═══ 69. 添加/修改合作区 ═══
@@ -104,8 +111,4 @@ public class CooperationManualTest extends ApiTestHelper {
 
     @Test @DisplayName("79.2 修改编码为已有编码(负向)")
     void test_7902_updateDupCode() { String cd1=c.code("C1"); c.ok(c.name("UpdC1"),cd1); c.updateFail(c.ok("UpdC2"),c.name("UpdC2"),cd1,"重复编码"); }
-
-    // ═══ 清理 ═══
-    @AfterAll
-    void cleanupAreas() { c.cleanup(); }
 }

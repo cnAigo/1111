@@ -73,6 +73,14 @@ public class ReqApiActions {
     private static final String ERM_UNLOCK         = "/erm/lockAndUnLockReq";
     private static final String ERM_SEARCH_TRACE   = "/erm/search/searchReqTrace";
     private static final String ERM_CHANGE_ANALYSIS = "/erm/get/getChangeAnalysis";
+    private static final String ERM_CHECK_TRACE_RELATION = "/erm/search/checkReqTraceRelation";
+    private static final String ERM_CONNECT_TRACE   = "/erm/add/connectReqToReqTrace";
+    private static final String ERM_SEARCH_SPEC_TRACE      = "/erm/search/searchReqSpecificationTrace";
+    private static final String ERM_DISCONNECT_SPEC_TRACE  = "/erm/update/disconnectReqSpecificationTrace";
+    private static final String ERM_UPDATE_SPEC_TRACE      = "/erm/update/updateReqSpecificationTrace";
+    private static final String TRACE_MATRIX_SEARCH    = "/trace/reqTrace/search/searchMatrix";
+    private static final String TRACE_REL_CATEGORIES   = "/trace/reqTrace/search/searchRelCategories";
+    private static final String ERM_UPDATE_LIST_TRACE  = "/erm/update/updateReqSpecListTrace";
 
     // ── ERM: Search / Tree ──
     private static final String ERM_SEARCH_TREE   = "/erm/search/searchReqFolderStructureTree";
@@ -656,7 +664,7 @@ public class ReqApiActions {
     }
 
     public String addFavorite(String projectId, String objectId, String type, String parentId) {
-        return post(ERM_ADD_FAV, obj("projectId", projectId, "objectId", objectId, "type", type));
+        return post(ERM_ADD_FAV, obj("projectId", projectId, "objectMasterId", parentId, "objectId", objectId, "type", type));
     }
 
     public String searchFavoriteList(String projectId) {
@@ -704,15 +712,28 @@ public class ReqApiActions {
     // ═══════════════════════ Custom Attribute ═══════════════════════
 
     public String addCustomAttribute(String nameEn, String name, String type, String projectId) {
+        return addCustomAttribute(nameEn, name, type, projectId, "", false);
+    }
+
+    /** Full version — control isUseDefaultValue and defaultValue for negative tests. */
+    public String addCustomAttribute(String nameEn, String name, String type, String projectId,
+                                     String defaultValue, boolean isUseDefaultValue) {
+        return addCustomAttribute(nameEn, name, type, projectId, defaultValue, isUseDefaultValue, "", new JsonArray());
+    }
+
+    /** Overload with valueRange and valueRangeMapping for enum/range tests. */
+    public String addCustomAttribute(String nameEn, String name, String type, String projectId,
+                                     String defaultValue, boolean isUseDefaultValue,
+                                     String valueRange, JsonArray valueRangeMapping) {
         return post(ERM_ATTR_ADD, obj(
             "nameEn", nameEn, "name", name, "type", type,
             "projectId", projectId, "description", "auto",
-            "current", "1", "valueRange", "", "defaultValue", "",
+            "current", "1", "valueRange", valueRange, "defaultValue", defaultValue,
             "isMultiple", false, "businessDomain", "需求管理",
             "objectType", "req", "id", "", "createTime", "",
             "creator", "", "modifier", "",
-            "usedColor", "#1e90ff", "isUseDefaultValue", false,
-            "valueRangeMapping", new JsonArray()));
+            "usedColor", "#1e90ff", "isUseDefaultValue", isUseDefaultValue,
+            "valueRangeMapping", valueRangeMapping));
     }
 
     public String[] findCustomAttribute(String nameEn, String projectId) {
@@ -804,6 +825,65 @@ public class ReqApiActions {
 
     public String searchChangeAnalysis(String objectId, String versionId) {
         return post(ERM_CHANGE_ANALYSIS, obj("objectId", objectId, "versionId", nvl(versionId)));
+    }
+
+    /** Check if trace relation exists between two req items. Returns flag: 0=none, 1=exists. */
+    public int checkReqTraceRelation(String fromObjectId, String toObjectId) {
+        String resp = get(ERM_CHECK_TRACE_RELATION, "fromObjectId", fromObjectId, "toObjectId", toObjectId);
+        try {
+            JsonObject r = JsonParser.parseString(resp).getAsJsonObject();
+            if (r.get("code").getAsInt() == 200 && r.has("data")) {
+                JsonObject d = r.getAsJsonObject("data");
+                if (d.has("flag")) return d.get("flag").getAsInt();
+            }
+        } catch (Exception e) { log.warn("checkReqTraceRelation failed: {}", e.getMessage()); }
+        return -1;
+    }
+
+    /** Create a trace link between two req items. type: 验证/包含/复制/精化/实现/衍生/引用. */
+    public String connectReqToReqTrace(String fromReqSpeId, String toReqSpeId,
+                                        String fromReqId, String toReqId, String type) {
+        JsonObject b = obj("fromReqSpeId", fromReqSpeId, "toReqSpeId", toReqSpeId,
+            "fromReqId", fromReqId, "toReqId", toReqId, "type", nvl(type, "验证"));
+        return post(ERM_CONNECT_TRACE, b);
+    }
+
+    /** List specs connected in trace configuration. type=需求. */
+    public String searchReqSpecificationTrace(String objectId, String type) {
+        return get(ERM_SEARCH_SPEC_TRACE, "objectId", objectId, "type", nvl(type, "需求"));
+    }
+
+    /** Disconnect a spec from trace configuration (spec-level, not item-level). */
+    public String disconnectReqSpecificationTrace(String fromObjectId, String toObjectId) {
+        return post(ERM_DISCONNECT_SPEC_TRACE, obj("fromObjectId", fromObjectId, "toObjectId", toObjectId));
+    }
+
+    /** Update trace configuration: set which specs are connected. toObjectIds = list of spec IDs. */
+    public String updateReqSpecificationTrace(String fromObjectId, JsonArray toObjectIds) {
+        JsonObject b = new JsonObject();
+        b.addProperty("fromObjectId", fromObjectId);
+        b.add("toObjectId", toObjectIds != null ? toObjectIds : new JsonArray());
+        return post(ERM_UPDATE_SPEC_TRACE, b);
+    }
+
+    /** Get trace matrix between two specs. fromObjectId=列规格, toObjectId=行规格. */
+    public String searchTraceMatrix(String fromObjectId, String toObjectId) {
+        return get(TRACE_MATRIX_SEARCH, "fromObjectId", fromObjectId, "toObjectId", toObjectId);
+    }
+
+    /** Get relationship categories: verify/contain/copy/refinement/achieve/derive/quote. */
+    public String searchRelCategories() {
+        return get(TRACE_REL_CATEGORIES);
+    }
+
+    /** Save trace matrix relationships. relToData = list of {toChildObjectId, relData:[{objectId,versionId,category,description,isAIAdd}]}. */
+    public String updateReqSpecListTrace(String fromObjectId, String toObjectId, JsonArray relFromData, JsonArray relToData) {
+        JsonObject b = new JsonObject();
+        b.addProperty("fromObjectId", fromObjectId);
+        b.addProperty("toObjectId", toObjectId);
+        b.add("relFromData", relFromData != null ? relFromData : new JsonArray());
+        b.add("relToData", relToData != null ? relToData : new JsonArray());
+        return post(ERM_UPDATE_LIST_TRACE, b);
     }
 
     public String checkOpenMode(String docId, String operateType, String openPerson) {
