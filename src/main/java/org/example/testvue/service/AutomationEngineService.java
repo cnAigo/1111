@@ -1,10 +1,7 @@
 package org.example.testvue.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
-import com.microsoft.playwright.options.MouseButton;
 import org.example.testvue.entity.TestCaseStep;
 import org.example.testvue.repository.TestCaseStepRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +26,6 @@ public class AutomationEngineService {
 
     @Autowired
     private BrowserAgentService browserAgentService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     // ==========================================
     // 全局登录状态缓存
@@ -78,6 +72,18 @@ public class AutomationEngineService {
     // 模式 1：AI 探索与录制模式 (Record)
     // ==========================================
 
+    /**
+     * 【重构】录制模式。
+     *
+     * 核心改动：
+     *   1. 消除 DRY 违规：不再手动解析 AI JSON + switch(action)，
+     *      改为直接调用 browserAgentService.executeAiCommand(page, aiRawResponse)，
+     *      实现核心执行逻辑的复用。
+     *   2. 修复吞异常灾难：UI 测试具有强顺序性，如果某一中间步骤失败
+     *      （例如第 3 步的点击没生效），后续步骤（如第 4 步的输入）必定在错误页面执行，
+     *      继续录制毫无意义。现在改为 break 立即中断录制循环。
+     *   3. 移除重复的 extractJson 方法（已统一由 BrowserAgentService 管理）。
+     */
     @Transactional
     public void runAndRecord(Long testCaseId, List<String> instructions) {
         stepRepository.deleteByTestCaseId(testCaseId);
@@ -122,30 +128,19 @@ public class AutomationEngineService {
                         step.setInputValue(targetUrl);
                     }
                     // --- C. UI 交互指令，交给 AI 处理 ---
+                    // 【重构】不再手动解析 JSON + switch(action)，
+                    // 直接复用 BrowserAgentService.executeAiCommand 的核心执行逻辑。
                     else {
                         String aiRawResponse = browserAgentService.callAiForStep(page, instruction);
-                        String cleanJson = extractJson(aiRawResponse);
-                        JsonNode command = objectMapper.readTree(cleanJson);
 
-                        String action = command.get("action").asText();
-                        String selector = command.get("selector").asText();
-                        String value = command.has("value") ? command.get("value").asText() : "";
+                        // 通过 executeAiCommand 统一执行：内部已包含
+                        // JSON 解析 → 参数提取 → scrollIntoViewIfNeeded → click/fill 容错执行
+                        BrowserAgentService.StepCommand cmd =
+                            browserAgentService.executeAiCommand(page, aiRawResponse);
 
-                        Locator target = page.locator(selector).first();
-                        if ("click".equals(action)) {
-                            target.click(new Locator.ClickOptions().setTimeout(5000));
-                        } else if ("right_click".equals(action)) {
-                            target.click(new Locator.ClickOptions()
-                                .setButton(MouseButton.RIGHT).setTimeout(5000));
-                        } else if ("fill".equals(action)) {
-                            target.fill(value, new Locator.FillOptions().setTimeout(5000));
-                        } else {
-                            throw new IllegalArgumentException("不支持的动作类型: " + action);
-                        }
-
-                        step.setActionType(action);
-                        step.setSelector(selector);
-                        step.setInputValue(value);
+                        step.setActionType(cmd.action());
+                        step.setSelector(cmd.selector());
+                        step.setInputValue(cmd.value());
                     }
 
                     // 执行成功才保存，失败不落库
@@ -155,7 +150,13 @@ public class AutomationEngineService {
                     page.waitForLoadState(LoadState.NETWORKIDLE);
 
                 } catch (Exception e) {
-                    System.err.println("步骤 " + order + " 执行失败，跳过录制: " + e.getMessage());
+                    // 【重构】UI 测试具有强顺序性 —— 如果步骤 N 失败，
+                    // 步骤 N+1 必定在错误的页面状态下执行，继续录制毫无意义。
+                    // 原代码在此处仅打印错误后 continue，导致后续步骤在
+                    // 完全错误的上下文中执行并产生无意义的录制数据。
+                    System.err.println("步骤 " + order + " 执行失败，中断录制: " + e.getMessage());
+                    e.printStackTrace();
+                    break; // 立即中断循环，不再继续执行后续步骤
                 }
             }
             System.out.println("==== 录制完成，共保存 " + (order - 1) + " 个步骤 ====");
@@ -193,7 +194,7 @@ public class AutomationEngineService {
                         .click(new Locator.ClickOptions().setTimeout(5000));
                     case "right_click" -> page.locator(step.getSelector())
                         .click(new Locator.ClickOptions()
-                            .setButton(MouseButton.RIGHT).setTimeout(5000));
+                            .setButton(com.microsoft.playwright.options.MouseButton.RIGHT).setTimeout(5000));
                     case "fill" -> page.locator(step.getSelector())
                         .fill(step.getInputValue(), new Locator.FillOptions().setTimeout(5000));
                     case "assert" -> {
@@ -317,41 +318,5 @@ public class AutomationEngineService {
         Matcher m = p.matcher(text);
         if (m.find()) return m.group();
         return text;
-    }
-
-    /**
-     * Strip Markdown fences and extract the AI command JSON from noisy response text.
-     * Iterates all {"action":...} blocks and keeps the last one (the real command),
-     * then falls back to the last { ... } pair in the text.
-     */
-    private String extractJson(String raw) {
-        if (raw == null || raw.isBlank()) {
-            throw new RuntimeException("AI response is null or empty");
-        }
-        String text = raw.trim();
-
-        // Strip ```json / ``` fences
-        text = text.replaceAll("(?s)^```(?:json)?\\s*", "");
-        text = text.replaceAll("(?s)\\s*```$", "");
-
-        // Find all {"action":...} blocks — keep the last one
-        java.util.regex.Pattern targetPattern = java.util.regex.Pattern.compile(
-            "(?s)\\{\\s*\"action\"\\s*:.*?\\}");
-        java.util.regex.Matcher targetMatcher = targetPattern.matcher(text);
-        String extractedJson = null;
-        while (targetMatcher.find()) extractedJson = targetMatcher.group(0);
-        if (extractedJson != null) return extractedJson;
-
-        // Fallback: last { ... } pair
-        int lastEndIndex = text.lastIndexOf('}');
-        if (lastEndIndex != -1) {
-            int matchingStartIndex = text.lastIndexOf('{', lastEndIndex);
-            if (matchingStartIndex != -1)
-                return text.substring(matchingStartIndex, lastEndIndex + 1);
-        }
-
-        throw new RuntimeException(
-            "解析失败：未能从 AI 响应中提取出合法的 JSON 对象。原始响应截断内容: \n"
-            + text.substring(0, Math.min(text.length(), 200)) + "...");
     }
 }

@@ -19,6 +19,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class BrowserAgentService {
@@ -43,6 +45,14 @@ public class BrowserAgentService {
             this(action, selector, value, instruction, null, null, null, null, null);
         }
     }
+
+    // ── 预编译正则（性能优化 + 可读性） ──
+    /** 匹配 Markdown 代码块中的 JSON：```json ... ``` 或 ``` ... ``` */
+    private static final Pattern MD_JSON_FENCE = Pattern.compile(
+        "(?s)```(?:json)?\\s*\\n?(\\{[^`]*?\\})\\n?```");
+    /** 匹配 JSON 对象中带 "action" 字段的完整对象 */
+    private static final Pattern ACTION_JSON = Pattern.compile(
+        "(?s)\\{\\s*\"action\"\\s*:\\s*\"[^\"]*\"\\s*[^}]*\\}");
 
     public AgentResult execute(String taskDescription, java.util.function.Consumer<String> logConsumer) {
         return execute(taskDescription, logConsumer, null);
@@ -177,8 +187,13 @@ public class BrowserAgentService {
                     // ① Build prompt with short-term memory + error feedback
                     String prompt = buildPrompt(intent, step, domData, lastCmd, lastError);
                     String rawJson = callMiMo(cfg, prompt, ss, domData);
+
+                    // 【修复致命Bug】先替换换行再计算长度，避免 replaceAll 缩短字符串后
+                    // 用原始长度做 substring 导致 StringIndexOutOfBoundsException
+                    String compactJson = rawJson != null ? rawJson.replaceAll("\\s+", " ") : "null";
+                    int safeLen = Math.min(150, compactJson.length());
                     log.accept("  AI" + (retry > 0 ? "[重试" + retry + "]" : "") + ": "
-                        + (rawJson != null ? rawJson.replaceAll("\\s+", " ").substring(0, Math.min(150, rawJson.length())) : "null"));
+                        + compactJson.substring(0, safeLen));
                     stepTrace.put("ai_response" + (retry > 0 ? "_retry" + retry : ""), rawJson);
 
                     try {
@@ -200,7 +215,10 @@ public class BrowserAgentService {
                     } catch (Exception e) {
                         lastError = e.getMessage();
                         if (retry < 2) {
-                            log.accept("  ! 重试 " + (retry + 1) + "/2: " + lastError.substring(0, Math.min(100, lastError.length())));
+                            // 【修复】同样先替换再取安全长度
+                            String safeErr = lastError != null ? lastError : "null";
+                            int errLen = Math.min(100, safeErr.length());
+                            log.accept("  ! 重试 " + (retry + 1) + "/2: " + safeErr.substring(0, errLen));
                             page.waitForTimeout(800); // brief pause before retry
                         } else {
                             failed++;
@@ -212,7 +230,10 @@ public class BrowserAgentService {
                         // Catch-all for AI call / screenshot / parsing failures
                         failed++;
                         String msg = outerEx.getMessage();
-                        log.accept("  X STEP ERROR: " + (msg != null ? msg.substring(0, Math.min(200, msg.length())) : "null"));
+                        // 【修复】安全的 substring 计算
+                        String safeMsg = msg != null ? msg : "null";
+                        int msgLen = Math.min(200, safeMsg.length());
+                        log.accept("  X STEP ERROR: " + safeMsg.substring(0, msgLen));
                         stepTrace.put("result", "step_error: " + msg);
                         stepDone = true; // stop retrying this step
                     }
@@ -245,51 +266,60 @@ public class BrowserAgentService {
     private String buildPrompt(String intent, String step, String domData, StepCommand lastCmd, String lastError) {
         StringBuilder sb = new StringBuilder();
         sb.append("""
-            你是一个严谨且专业的 Web UI 自动化测试执行引擎。将操作指令、DOM属性、截图转换为 Playwright 可执行的严格 JSON。
+            你是一个聪明的 UI 自动化测试专家。请先简短分析当前页面元素与用户指令的匹配关系，然后输出JSON。
 
-            【全局约束】
-            1. 你是一个JSON生成机器。回答必须以{开头、以}结尾。绝对禁止输出任何思考过程、推理、"首先"、"分析"、"现在"等废话！
-            2. value必须用指令里的真实数据，禁止"要输入的值"等占位符，无输入则""
-            3. action只能是 click、fill、right_click、dblclick 或 type
-               - fill: 用在普通输入框，需要 selector
-               - dblclick: 双击元素（如双击文件名进入重命名）
-               - type: 用在输入框已被激活的场景，无需 selector，Ctrl+A全选后输入value
-            4. 选择器优先级：button:has-text('xxx') > span:has-text('xxx') > [placeholder='xxx'] > [type='xxx'] > 唯一ID
-               禁止动态ID(如el-id-3932-3，除非唯一)，禁止把输入值当name属性(如[name='admin'])
-            5. 前端框架 Element Plus
-            6. 操作完成后页面需要时间渲染（下拉菜单、弹窗、右键菜单），截图和DOM可能延迟。
-               如果你要找的元素不在DOM中，尝试根据指令语义选择最接近的可见元素。
+            【执行策略】
+            1. 优先使用文本包含来定位，例如 text='保存' 或 :has-text('保存')
+            2. 如果有多个同名按钮，结合DOM中的父级特征生成精确的CSS/XPath
+            3. 禁止动态ID（如el-id-3932-3），禁止把输入值当name属性（如[name='admin']）
+            4. 前端框架 Element Plus
+
+            【可用操作】
+            click / fill / right_click / dblclick / type
+            - fill: 普通输入框填充，需 selector
+            - dblclick: 双击元素（如双击文件名进入重命名）
+            - type: 输入框已被激活时用，无需selector，Ctrl+A全选后输入value
+
+            你的回复必须包含一个Markdown格式的JSON块，例如：
+            ```json
+            {"action":"click", "selector":"button:has-text('登录')", "value":""}
+            ```
 
             """);
 
-        // Short-term memory: tell AI what just happened
+        // Short-term memory
         if (lastCmd != null) {
             sb.append("【上一步执行结果】\n");
             sb.append("动作: ").append(lastCmd.action())
               .append(" | 选择器: ").append(lastCmd.selector())
-              .append(" | 值: ").append(lastCmd.value() != null ? lastCmd.value() : "")
               .append(" | 状态: 成功\n\n");
         }
 
-        // Error feedback for auto-correction retry
+        // Error feedback for retry
         if (lastError != null) {
             sb.append("【上次尝试失败！请换策略】\n");
-            sb.append("错误信息: ").append(lastError).append("\n");
-            sb.append("请观察最新截图和DOM，换一个不同的选择器或操作方式重试。\n\n");
+            sb.append("错误: ").append(lastError).append("\n");
+            sb.append("请观察最新截图和DOM，换不同的选择器或操作方式。\n\n");
         }
 
         sb.append("""
             【Few-Shot】
             指令: 点击登录 | DOM: [{"tag":"button","text":"登 录"}]
-            → {"action":"click","selector":"button:has-text('登 录')","value":""}
+            分析: 找到按钮，文本'登 录'匹配，使用button:has-text。
+            ```json
+            {"action":"click","selector":"button:has-text('登 录')","value":""}
+            ```
 
             指令: 输入admin | DOM: [{"tag":"input","type":"text","placeholder":"请输入用户名"}]
-            → {"action":"fill","selector":"input[placeholder='请输入用户名']","value":"admin"}
+            分析: 定位到placeholder为'请输入用户名'的输入框。
+            ```json
+            {"action":"fill","selector":"input[placeholder='请输入用户名']","value":"admin"}
+            ```
 
             【当前任务】
             指令: """).append(step).append("\n")
-          .append("DOM属性: ").append(domData.length() > 800 ? domData.substring(0, 800) + "..." : domData).append("\n\n")
-          .append("立刻输出纯JSON（不要任何其他文字）。你的回复必须且只能以 {\"action\": 开始：");
+          .append("DOM: ").append(domData.length() > 1000 ? domData.substring(0, 1000) + "..." : domData).append("\n\n")
+          .append("请先简短分析，然后输出JSON块：");
 
         return sb.toString();
     }
@@ -344,6 +374,10 @@ public class BrowserAgentService {
      * Execute a single AI-generated UI automation command with fast-fail semantics.
      * No fallback selectors — if the AI's selector cannot be found, the step fails immediately.
      *
+     * 【重构要点】
+     *   1. 任何 action 前强制 scrollIntoViewIfNeeded（不包在 try-catch 里吞异常）
+     *   2. fill 改为 click() + pressSequentially(delay=50)，完美兼容 Vue/Element Plus 双向绑定
+     *
      * @param page        Playwright Page instance
      * @param rawResponse raw AI response text (may contain Markdown wrapping)
      * @throws RuntimeException       if the selector is not found, times out, or the JSON is malformed
@@ -354,8 +388,11 @@ public class BrowserAgentService {
         try {
             json = extractJson(rawResponse);
         } catch (Exception e) {
-            throw new RuntimeException("extractJson failed. Raw AI[" + rawResponse.length() + "]: "
-                + rawResponse.substring(0, Math.min(rawResponse.length(), 100)), e);
+            // 【修复】安全的 substring：先取安全长度再截取
+            String safeRaw = rawResponse != null ? rawResponse : "null";
+            int safeLen = Math.min(safeRaw.length(), 100);
+            throw new RuntimeException("extractJson failed. Raw AI[" + safeRaw.length() + "]: "
+                + safeRaw.substring(0, safeLen), e);
         }
 
         String action;
@@ -367,33 +404,54 @@ public class BrowserAgentService {
             selector = cmd.get("selector") != null ? cmd.get("selector").toString() : "";
             value = cmd.get("value") != null ? cmd.get("value").toString() : "";
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse JSON[" + json.length() + "]: " + json, e);
+            String safeJson = json != null ? json : "null";
+            int safeLen = Math.min(safeJson.length(), 200);
+            throw new RuntimeException("Failed to parse JSON[" + safeJson.length() + "]: "
+                + safeJson.substring(0, safeLen), e);
         }
 
-        if (!"click".equals(action) && !"fill".equals(action) && !"right_click".equals(action) && !"type".equals(action) && !"dblclick".equals(action)) {
+        if (!"click".equals(action) && !"fill".equals(action) && !"right_click".equals(action)
+            && !"type".equals(action) && !"dblclick".equals(action)) {
+            String safeRaw = rawResponse != null ? rawResponse : "null";
+            int safeLen = Math.min(safeRaw.length(), 200);
             throw new IllegalArgumentException(
-                "Unsupported action '" + action + "'. Raw: " + rawResponse);
+                "Unsupported action '" + action + "'. Raw: " + safeRaw.substring(0, safeLen));
         }
 
         if (selector.isBlank() && !"type".equals(action)) {
-            throw new RuntimeException("AI returned empty selector. Raw response: " + rawResponse);
+            String safeRaw = rawResponse != null ? rawResponse : "null";
+            int safeLen = Math.min(safeRaw.length(), 200);
+            throw new RuntimeException("AI returned empty selector. Raw response: "
+                + safeRaw.substring(0, safeLen));
         }
 
         try {
+            Locator target = page.locator(selector).first();
+
+            // 【重构】强制滚动到视口：任何 action 前必须执行，不包在 try-catch 中吞异常
+            // 如果元素不在视口内（被固定 header 遮挡、在折叠区域外），scroll 失败意味着
+            // 后续 click/fill 必定失败，应当直接暴露问题而非静默跳过
+            if (!"type".equals(action)) {
+                target.scrollIntoViewIfNeeded(
+                    new Locator.ScrollIntoViewIfNeededOptions().setTimeout(5000));
+            }
+
             switch (action) {
-                case "click" -> page.locator(selector).first()
-                    .click(new Locator.ClickOptions().setTimeout(5000));
-                case "right_click" -> page.locator(selector).first()
-                    .click(new Locator.ClickOptions()
-                        .setButton(com.microsoft.playwright.options.MouseButton.RIGHT)
-                        .setTimeout(5000));
-                case "dblclick" -> page.locator(selector).first()
-                    .dblclick(new Locator.DblclickOptions().setTimeout(5000));
+                case "click" -> target.click(new Locator.ClickOptions().setTimeout(5000));
+                case "right_click" -> target.click(new Locator.ClickOptions()
+                    .setButton(com.microsoft.playwright.options.MouseButton.RIGHT).setTimeout(5000));
+                case "dblclick" -> target.dblclick(new Locator.DblclickOptions().setTimeout(5000));
                 case "fill" -> {
-                    page.locator(selector).first()
-                        .click(new Locator.ClickOptions().setTimeout(5000));
-                    page.locator(selector).first()
-                        .fill(value, new Locator.FillOptions().setTimeout(5000));
+                    // 【重构】先 click 触发 Vue/Element Plus 的 focus 事件，
+                    // 再用 pressSequentially(delay=50) 模拟人类逐字输入。
+                    // 原生 fill() 直接设置 value 属性，不触发 input 事件，
+                    // 导致 Element Plus 的 v-model 双向绑定不更新。
+                    target.click(new Locator.ClickOptions().setTimeout(5000));
+                    // Ctrl+A 全选已有内容（如果输入框有默认值）
+                    target.press("Control+a");
+                    // 模拟人类逐字输入，每次按键间隔 50ms，确保 Vue 响应式系统捕获每次 input 事件
+                    target.pressSequentially(value,
+                        new Locator.PressSequentiallyOptions().setDelay(50));
                 }
                 case "type" -> {
                     page.keyboard().press("Control+a");
@@ -425,42 +483,52 @@ public class BrowserAgentService {
     }
 
     /**
-     * Strip Markdown fences and aggressively extract the AI command JSON from noisy response text.
+     * 【重构】从 AI 响应中提取 JSON 命令。
      *
-     * Strategy (tried in order):
-     * 1. Match {"action":"click|fill"...} — the exact JSON shape we expect
-     * 2. Fall back to the last { ... } block in the text (chain-of-thought usually comes first)
-     * 3. Fail with a diagnostic message including the raw response
+     * 策略（按优先级）：
+     *   1. 正则匹配 Markdown 代码块 ```json { ... } ```（最可靠，AI 被训练输出此格式）
+     *   2. 正则匹配第一个 {"action": "..." ...} 完整 JSON 对象（处理 AI 输出但未用代码块包裹的情况）
+     *   3. 兜底：查找最外层 { ... } 配对（lastIndexOf 仅作为最后手段）
+     *
+     * 原方法仅靠 lastIndexOf 提取最外层 {}，当 AI 输出中包含分析文本的 { 括号时
+     * 会截取到错误的内容。现改为正则优先 + 语义匹配。
      */
     private String extractJson(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new RuntimeException("AI response is null or empty");
         }
-        String text = raw.trim();
 
-        // Strip ```json / ``` fences
-        text = text.replaceAll("(?s)^```(?:json)?\\s*", "");
-        text = text.replaceAll("(?s)\\s*```$", "");
-
-        // Find all {"action":...} blocks — keep the last one
-        java.util.regex.Pattern targetPattern = java.util.regex.Pattern.compile(
-            "(?s)\\{\\s*\"action\"\\s*:.*?\\}");
-        java.util.regex.Matcher targetMatcher = targetPattern.matcher(text);
-        String extractedJson = null;
-        while (targetMatcher.find()) extractedJson = targetMatcher.group(0);
-        if (extractedJson != null) return extractedJson;
-
-        // Fallback: last { ... } pair
-        int lastEndIndex = text.lastIndexOf('}');
-        if (lastEndIndex != -1) {
-            int matchingStartIndex = text.lastIndexOf('{', lastEndIndex);
-            if (matchingStartIndex != -1)
-                return text.substring(matchingStartIndex, lastEndIndex + 1);
+        // ── 策略1：正则提取 Markdown 代码块中的 JSON ──
+        // 匹配 ```json { ... } ``` 或 ``` { ... } ```
+        // 使用 [^`]*? 而非 .*?，确保不会跨越代码块边界匹配
+        Matcher fenceMatcher = MD_JSON_FENCE.matcher(raw);
+        if (fenceMatcher.find()) {
+            String jsonMatch = fenceMatcher.group(1).trim();
+            if (jsonMatch.startsWith("{") && jsonMatch.endsWith("}")) {
+                return jsonMatch;
+            }
         }
 
+        // ── 策略2：正则提取带 "action" 字段的完整 JSON 对象 ──
+        // 这比 lastIndexOf 精确得多：它匹配语义正确的 JSON 而非任意 { ... }
+        Matcher actionMatcher = ACTION_JSON.matcher(raw);
+        if (actionMatcher.find()) {
+            return actionMatcher.group(0).trim();
+        }
+
+        // ── 策略3（兜底）：最外层大括号配对 ──
+        // 仅在以上两种正则都失败时使用，处理 AI 输出格式完全异常的情况
+        int firstBrace = raw.indexOf('{');
+        int lastBrace = raw.lastIndexOf('}');
+        if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+            return raw.substring(firstBrace, lastBrace + 1);
+        }
+
+        // 【修复】安全的 substring：先取安全长度，避免越界
+        String safeRaw = raw;
+        int safeLen = Math.min(safeRaw.length(), 150);
         throw new RuntimeException(
-            "解析失败：未能从 AI 响应中提取出合法的 JSON 对象。原始响应截断内容: \n"
-            + text.substring(0, Math.min(text.length(), 200)) + "...");
+            "无法从响应中提取JSON。AI 回复片段: " + safeRaw.substring(0, safeLen));
     }
 
     // ── ① Parse AI JSON response (no fallback — fast-fail on malformed input) ──
@@ -469,7 +537,10 @@ public class BrowserAgentService {
         try {
             return mapper.readValue(json, Map.class);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse AI response JSON: " + raw, e);
+            String safeRaw = raw != null ? raw : "null";
+            int safeLen = Math.min(safeRaw.length(), 200);
+            throw new RuntimeException("Failed to parse AI response JSON: "
+                + safeRaw.substring(0, safeLen), e);
         }
     }
 
@@ -497,21 +568,25 @@ public class BrowserAgentService {
             try {
                 List<AiPromptTemplate> activePrompts = promptRepo.findByIsActiveTrueOrderByCreatedAtDesc();
                 if (!activePrompts.isEmpty()) {
-                    AiPromptTemplate pt = activePrompts.get(0); // first active = default
+                    AiPromptTemplate pt = activePrompts.get(0);
                     if (pt.getContent() != null && !pt.getContent().isBlank()) {
                         customPrompt = pt.getContent() + "\n\n";
                         String logMsg = "  [提示词] 已加载: " + pt.getName() + " (" + pt.getContent().length() + "字)";
                         System.out.println(logMsg);
-                        // Inject into execution log — but we don't have log consumer here
-                        // Instead, we return it prepended to the prompt so it's visible
                     }
                 }
             } catch (Exception ignored) {}
 
+            // 【重构】系统提示词：引导 AI 优先利用截图视觉布局 + DOM 属性联合决策。
+            // 删除了"不要依赖截图猜测"的限制语，改为鼓励视觉+DOM双重验证。
+            // 视觉大模型能感知元素的层级遮挡、可见性和空间位置，这是纯 DOM 无法提供的。
             String systemPrompt = customPrompt
                 + "你是网页自动化专家。下面提供了页面上所有可交互元素的真实DOM属性（JSON数组），以及页面截图。"
-                + "请根据DOM属性选择最合适的CSS选择器，不要依赖截图猜测。\n\n"
-                + "【最高级别格式警告】你是一个没有感情的JSON生成机器。绝对禁止输出任何思考过程、推理步骤、\"首先\"、\"分析\"等前置语言！"
+                + "请综合【页面截图】的视觉布局和【DOM属性】来生成最精准的选择器。\n"
+                + "截图可以帮助你判断元素的层级关系、可见性、是否被遮挡、空间位置；"
+                + "DOM属性提供了精确的标签、class、text等元数据。两者结合使用。\n\n"
+                + "【最高级别格式警告】你是一个没有感情的JSON生成机器。绝对禁止输出任何思考过程、推理步骤、"
+                + "\"首先\"、\"分析\"等前置语言！"
                 + "你的所有回答必须以 { 开头，以 } 结尾。除此之外的任何字符都将被视为严重违规！\n\n"
                 + "DOM属性: " + domData + "\n\n";
 
@@ -549,25 +624,30 @@ public class BrowserAgentService {
                 }
                     return rawBody;
                 } catch (Exception parseEx) {
-                    System.err.println("MiMo parse error, raw body[" + rawBody.length() + "]: " + rawBody.substring(0, Math.min(300, rawBody.length())));
+                    // 【修复】安全的 substring 计算
+                    String safeBody = rawBody != null ? rawBody : "null";
+                    int safeLen = Math.min(safeBody.length(), 300);
+                    System.err.println("MiMo parse error, raw body[" + safeBody.length() + "]: "
+                        + safeBody.substring(0, safeLen));
                     return rawBody;
                 }
             }
-            throw new RuntimeException("MiMo API returned status " + resp.statusCode() + ": " + rawBody.substring(0, Math.min(300, rawBody.length())));
+            // 【修复】安全的 substring
+            String safeBody = rawBody != null ? rawBody : "null";
+            int safeLen = Math.min(safeBody.length(), 300);
+            throw new RuntimeException("MiMo API returned status " + resp.statusCode() + ": "
+                + safeBody.substring(0, safeLen));
         } catch (RuntimeException e) { throw e; }
         catch (Exception e) { throw new RuntimeException("MiMo API call failed: " + e.getMessage(), e); }
     }
 
     // ── Login page detection & auto-fill ──
     private boolean isLoginPage(Page page) {
-        // Priority 1: URL pattern
         String url = page.url().toLowerCase();
         if (url.contains("/login") || url.contains("/auth") || url.contains("/signin")) {
             System.out.println("[isLoginPage] URL matched: " + url);
             return true;
         }
-
-        // Priority 2: page body text (most reliable — login page always has these words)
         try {
             String bodyText = page.textContent("body");
             if (bodyText != null) {
@@ -582,8 +662,6 @@ public class BrowserAgentService {
         } catch (Exception e) {
             System.out.println("[isLoginPage] body text check failed: " + e.getMessage());
         }
-
-        // Priority 3: JS element detection
         try {
             Object result = page.evaluate("() => {"
                 + "const inputs = document.querySelectorAll('.el-input__inner, input');"
@@ -612,7 +690,6 @@ public class BrowserAgentService {
         } catch (Exception e) {
             System.out.println("[isLoginPage] JS check failed: " + e.getMessage());
         }
-
         return false;
     }
 
