@@ -1,0 +1,169 @@
+// ── Blue-White · Cream Structured Theme ──
+// Dashed-border cards, warm off-white, steel-blue accents
+
+// Element Plus CSS variable overrides
+:root {
+  --el-color-primary: #4a6a8a;
+  --el-color-primary-light-3: #7a95ad;
+  --el-color-primary-light-5: #a3b7c7;
+  --el-color-primary-light-7: #c9d5df;
+  --el-color-primary-light-8: #dfe6ed;
+  --el-color-primary-light-9: #eff2f6;
+  --el-color-primary-dark-2: #3a5871;
+  --el-border-radius-base: 4px;
+  --el-border-radius-round: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: #f2efe9;          // warm cream base
+  font-size: 14px;
+  color: #3a3a3a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+// ── Layout ──
+
+.page-container {
+  padding: 24px;
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e0dad0;
+
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #2c3e50;
+      letter-spacing: -0.3px;
+    }
+  }
+}
+
+// ── Dashed-border content block ──
+
+.card-container {
+  background: #fdfcfa;                // warm white
+  border: 1.5px dashed #d4cdc0;      // dashed border
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 650;
+  color: #4a6a8a;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #d4cdc0;
+  letter-spacing: 0.2px;
+}
+
+// ── Tables ──
+
+.el-table {
+  --el-table-border-color: #e8e2d8;
+  --el-table-header-bg-color: #f5f1ea;
+  --el-table-row-hover-bg-color: #faf7f2;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e8e2d8;
+
+  th.el-table__cell {
+    background-color: #f5f1ea;
+    color: #5a554d;
+    font-weight: 650;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+  }
+}
+
+// ── Buttons ──
+
+.el-button {
+  border-radius: 6px;
+  font-weight: 550;
+  letter-spacing: 0.2px;
+
+  &--primary {
+    --el-button-bg-color: #4a6a8a;
+    --el-button-border-color: #4a6a8a;
+  }
+}
+
+// ── Dialogs ──
+
+.el-dialog {
+  border-radius: 12px;
+  --el-dialog-bg-color: #fdfcfa;
+
+  .el-dialog__header {
+    border-bottom: 1px dashed #d4cdc0;
+    padding-bottom: 14px;
+    margin: 0 20px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .el-dialog__title {
+    font-weight: 700;
+    color: #2c3e50;
+  }
+}
+
+// ── Input / Textarea ──
+
+.el-input__wrapper, .el-textarea__inner {
+  border-radius: 6px;
+  background-color: #fdfcfa;
+}
+
+// ── Tags ──
+
+.el-tag {
+  border-radius: 4px;
+  font-weight: 550;
+}
+
+// ── Pagination ──
+
+.el-pagination {
+  margin-top: 16px;
+}
+
+// ── Forms ──
+
+.el-form-item__label {
+  color: #5a554d;
+  font-weight: 600;
+}
+
+// ── Menu / Sidebar ──
+
+.el-menu {
+  border-right: 1px dashed #d4cdc0 !important;
+}

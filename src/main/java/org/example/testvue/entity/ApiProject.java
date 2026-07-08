@@ -1,0 +1,36 @@
+package org.example.testvue.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "api_projects")
+public class ApiProject {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
+    @Column(length = 1000)
+    private String description;
+    private String projectType = "HTTP";
+    private String status = "active";
+    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    public ApiProject() {}
+    public ApiProject(String name, String desc) { this.name = name; this.description = desc; }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getProjectType() { return projectType; }
+    public void setProjectType(String t) { this.projectType = t; }
+    public String getStatus() { return status; }
+    public void setStatus(String s) { this.status = s; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime t) { this.createdAt = t; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime t) { this.updatedAt = t; }
+}

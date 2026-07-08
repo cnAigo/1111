@@ -1,0 +1,314 @@
+package org.example.testvue.controller;
+
+import org.springframework.web.bind.annotation.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/api-testing")
+public class ApiTestingMockController {
+
+    private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // ── Dashboard ──
+    @GetMapping("/dashboard/stats/")
+    public Map<String, Object> dashboardStats() {
+        Map<String, Object> d = new LinkedHashMap<>();
+        d.put("project_count", 5);
+        d.put("interface_count", 32);
+        d.put("suite_count", 8);
+        d.put("execution_count", 45);
+        d.put("history_count", 128);
+        return d;
+    }
+
+    // ── Collections ──
+    @GetMapping("/collections/")
+    public List<Map<String, Object>> listCollections() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(col(1, "用户模块", null));
+        r.add(col(2, "订单模块", null));
+        Map<String, Object> child = col(3, "子集合", 2);
+        r.add(child);
+        return r;
+    }
+
+    @PostMapping("/collections/")
+    public Map<String, Object> createCollection(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    // ── API Requests ──
+    @GetMapping("/requests/")
+    public Map<String, Object> listRequests() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(req(1, "GET 获取用户列表", "GET"));
+        r.add(req(2, "POST 创建用户", "POST"));
+        r.add(req(3, "PUT 更新用户", "PUT"));
+        r.add(req(4, "DELETE 删除用户", "DELETE"));
+        return paginated(r);
+    }
+
+    @GetMapping("/requests/{id}/")
+    public Map<String, Object> reqDetail(@PathVariable int id) { return req(id, "Request #" + id, "GET"); }
+
+    @PostMapping("/requests/")
+    public Map<String, Object> createRequest(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    @PatchMapping("/requests/{id}/")
+    public Map<String, Object> updateRequest(@PathVariable int id, @RequestBody Map<String, Object> body) { return ok(body); }
+
+    @DeleteMapping("/requests/{id}/")
+    public Map<String, Object> deleteRequest(@PathVariable int id) { return ok(); }
+
+    @PostMapping("/api-requests/{id}/execute/")
+    public Map<String, Object> executeRequest(@PathVariable int id) {
+        return Map.of("status_code", 200, "response_time", "120ms", "body", "{\"ok\":true}");
+    }
+
+    // ── Environments ──
+    @GetMapping("/environments/")
+    public List<Map<String, Object>> listEnvironments() {
+        return Arrays.asList(
+            env(1, "开发环境", "https://dev.example.com"),
+            env(2, "测试环境", "https://test.example.com"),
+            env(3, "生产环境", "https://api.example.com")
+        );
+    }
+
+    @PostMapping("/environments/")
+    public Map<String, Object> createEnv(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    @PatchMapping("/environments/{id}/")
+    public Map<String, Object> updateEnv(@PathVariable int id, @RequestBody Map<String, Object> body) { return ok(body); }
+
+    @DeleteMapping("/environments/{id}/")
+    public Map<String, Object> deleteEnv(@PathVariable int id) { return ok(); }
+
+    // ── Request History ──
+    @GetMapping("/histories/")
+    public Map<String, Object> listHistory() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(hist(1, "GET /api/users", 200, "45ms"));
+        r.add(hist(2, "POST /api/users", 201, "120ms"));
+        r.add(hist(3, "PUT /api/users/1", 200, "88ms"));
+        r.add(hist(4, "DELETE /api/users/2", 204, "52ms"));
+        return paginated(r);
+    }
+
+    @DeleteMapping("/histories/{id}/")
+    public Map<String, Object> deleteHistory(@PathVariable int id) { return ok(); }
+
+    @PostMapping("/histories/batch-delete/")
+    public Map<String, Object> batchDeleteHistory(@RequestBody Map<String, Object> body) { return ok(); }
+
+    // ── Test Suites ──
+    @GetMapping("/test-suites/")
+    public Map<String, Object> listSuites() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(suite(1, "用户CRUD测试套件"));
+        r.add(suite(2, "订单流程测试"));
+        r.add(suite(3, "全接口健康检查"));
+        return paginated(r);
+    }
+
+    @PostMapping("/test-suites/")
+    public Map<String, Object> createSuite(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    @PatchMapping("/test-suites/{id}/")
+    public Map<String, Object> updateSuite(@PathVariable int id, @RequestBody Map<String, Object> body) { return ok(body); }
+
+    @DeleteMapping("/test-suites/{id}/")
+    public Map<String, Object> deleteSuite(@PathVariable int id) { return ok(); }
+
+    @PostMapping("/test-suites/{id}/execute/")
+    public Map<String, Object> executeSuite(@PathVariable int id) { return Map.of("execution_id", UUID.randomUUID().toString(), "status", "running"); }
+
+    // ── Test Executions ──
+    @GetMapping("/test-executions/")
+    public Map<String, Object> listExecutions() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(exec(1, "passed", "1m20s"));
+        r.add(exec(2, "failed", "2m05s"));
+        r.add(exec(3, "passed", "45s"));
+        return paginated(r);
+    }
+
+    @GetMapping("/executions/{id}/")
+    public Map<String, Object> execDetail(@PathVariable int id) { return exec(id, "passed", "1m00s"); }
+
+    // ── Scheduled Tasks ──
+    @GetMapping("/scheduled-tasks/")
+    public Map<String, Object> listTasks() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(task(1, "每日接口回归", "0 8 * * *", "active"));
+        r.add(task(2, "冒烟测试", "0 */6 * * *", "paused"));
+        return paginated(r);
+    }
+
+    @GetMapping("/scheduled-tasks/{id}/")
+    public Map<String, Object> taskDetail(@PathVariable int id) { return task(id, "Task #" + id, "0 0 * * *", "active"); }
+
+    @PostMapping("/scheduled-tasks/")
+    public Map<String, Object> createTask(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    @PatchMapping("/scheduled-tasks/{id}/")
+    public Map<String, Object> updateTask(@PathVariable int id, @RequestBody Map<String, Object> body) { return ok(body); }
+
+    @DeleteMapping("/scheduled-tasks/{id}/")
+    public Map<String, Object> deleteTask(@PathVariable int id) { return ok(); }
+
+    @PostMapping("/scheduled-tasks/{id}/run_now/")
+    public Map<String, Object> runNow(@PathVariable int id) { return Map.of("status", "started"); }
+
+    @GetMapping("/scheduled-tasks/{id}/execution_logs/")
+    public List<Map<String, Object>> execLogs(@PathVariable int id) {
+        return Arrays.asList(
+            Map.of("timestamp", now(), "level", "INFO", "message", "Task executed successfully")
+        );
+    }
+
+    // ── Operation Logs ──
+    @GetMapping("/operation-logs/")
+    public Map<String, Object> operationLogs() {
+        List<Map<String, Object>> r = new ArrayList<>();
+        r.add(opLog(1, "create", "创建项目 TaaS API Test"));
+        r.add(opLog(2, "edit", "更新接口 GET /users"));
+        r.add(opLog(3, "execute", "执行套件 用户CRUD"));
+        r.add(opLog(4, "delete", "删除历史记录"));
+        return paginated(r);
+    }
+
+    // ── Users ──
+    @GetMapping("/users/")
+    public List<Map<String, String>> users() {
+        return Arrays.asList(
+            Map.of("id", "1", "username", "admin", "email", "admin@test.com"),
+            Map.of("id", "2", "username", "tester", "email", "tester@test.com")
+        );
+    }
+
+    // ── Notification Logs ──
+    @GetMapping("/notification-logs/")
+    public Map<String, Object> notifLogs() {
+        return paginated(Arrays.asList(
+            Map.of("id", 1, "type", "email", "status", "success", "message", "测试报告已发送至 admin@test.com"),
+            Map.of("id", 2, "type", "webhook", "status", "failed", "message", "Webhook 超时")
+        ));
+    }
+
+    // ── Task Notification Settings ──
+    @GetMapping("/task-notification-settings/")
+    public List<Map<String, Object>> tnSettings() { return Arrays.asList(); }
+
+    @PostMapping("/task-notification-settings/")
+    public Map<String, Object> createTNSetting(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    @PatchMapping("/task-notification-settings/{id}/")
+    public Map<String, Object> updateTNSetting(@PathVariable int id, @RequestBody Map<String, Object> body) { return ok(body); }
+
+    // ── AI Service Configs ──
+    @GetMapping("/ai-service-configs/")
+    public Map<String, Object> aiConfigs() {
+        return paginated(Arrays.asList(
+            Map.of("id", 1, "name", "GPT-4o", "provider", "openai", "status", "active"),
+            Map.of("id", 2, "name", "DeepSeek V3", "provider", "deepseek", "status", "active")
+        ));
+    }
+
+    @PostMapping("/ai-service-configs/")
+    public Map<String, Object> createAIConfig(@RequestBody Map<String, Object> body) { return ok(body); }
+
+    @PatchMapping("/ai-service-configs/{id}/")
+    public Map<String, Object> updateAIConfig(@PathVariable int id, @RequestBody Map<String, Object> body) { return ok(body); }
+
+    @DeleteMapping("/ai-service-configs/{id}/")
+    public Map<String, Object> deleteAIConfig(@PathVariable int id) { return ok(); }
+
+    @PostMapping("/ai-service-configs/{id}/test_connection/")
+    public Map<String, Object> testConnection(@PathVariable int id) { return Map.of("success", true, "message", "连接成功"); }
+
+    // ── Helper methods ──
+    private Map<String, Object> ok() { return Map.of("id", System.currentTimeMillis(), "message", "success"); }
+    private Map<String, Object> ok(Map<String, Object> body) {
+        Map<String, Object> r = new LinkedHashMap<>(body);
+        r.putIfAbsent("id", System.currentTimeMillis());
+        r.put("message", "success");
+        return r;
+    }
+
+    private Map<String, Object> paginated(List<Map<String, Object>> results) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("count", results.size());
+        resp.put("next", null);
+        resp.put("previous", null);
+        resp.put("results", results);
+        return resp;
+    }
+
+    private Map<String, Object> proj(int id, String name, String desc) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("name", name); m.put("description", desc);
+        m.put("status", "active"); m.put("created_at", now()); m.put("updated_at", now());
+        return m;
+    }
+
+    private Map<String, Object> col(int id, String name, Integer parent) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("name", name); m.put("parent", parent);
+        m.put("created_at", now());
+        return m;
+    }
+
+    private Map<String, Object> req(int id, String name, String method) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("name", name); m.put("method", method);
+        m.put("url", "/api/mock/endpoint"); m.put("created_at", now());
+        return m;
+    }
+
+    private Map<String, Object> env(int id, String name, String baseUrl) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("name", name); m.put("base_url", baseUrl);
+        m.put("variables", Map.of("token", "xxx", "host", baseUrl));
+        return m;
+    }
+
+    private Map<String, Object> hist(int id, String name, int status, String time) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("request_name", name); m.put("status_code", status);
+        m.put("response_time", time); m.put("created_at", now());
+        return m;
+    }
+
+    private Map<String, Object> suite(int id, String name) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("name", name); m.put("request_count", id * 3);
+        m.put("created_at", now());
+        return m;
+    }
+
+    private Map<String, Object> exec(int id, String status, String duration) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("status", status); m.put("duration", duration);
+        m.put("passed", status.equals("passed") ? 10 : 7);
+        m.put("failed", status.equals("passed") ? 0 : 3);
+        m.put("executed_at", now());
+        return m;
+    }
+
+    private Map<String, Object> task(int id, String name, String cron, String status) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("name", name); m.put("cron_expression", cron);
+        m.put("status", status); m.put("created_at", now());
+        return m;
+    }
+
+    private Map<String, Object> opLog(int id, String type, String desc) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", id); m.put("operation_type", type); m.put("description", desc);
+        m.put("user_name", "admin"); m.put("created_at", now());
+        return m;
+    }
+
+    private String now() { return LocalDateTime.now().format(DT); }
+}

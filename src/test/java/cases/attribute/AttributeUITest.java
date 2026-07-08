@@ -1,6 +1,8 @@
 package cases.attribute;
 
 import base.ApiTestHelper;
+import base.SafeActions;
+import base.SmartWait;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.AriaRole;
 import config.TestConfig;
@@ -10,6 +12,16 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.regex.Pattern;
 
+/**
+ * 自定义属性 UI 自动化测试（已重构）。
+ *
+ * 原脆弱点：
+ *   1. Thread.sleep() 死等 — 完全不可靠，CI 慢时失败、本地快时浪费时间
+ *   2. page.waitForTimeout(5000/2000/3000) 多处 — 同上
+ *   3. 登录逻辑中盲等 5s + 3s + 2s — URL 已跳转仍在等
+ *
+ * 重构后：所有等待改为状态驱动（SmartWait），所有交互改用 SafeActions。
+ */
 @Tag("AttributeModule")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -18,6 +30,8 @@ public class AttributeUITest extends ApiTestHelper {
     private Browser browser;
     private BrowserContext uiContext;
     private Page page;
+    private SafeActions ui;
+    private SmartWait waiter;
     private boolean loggedIn = false;
 
     @BeforeAll
@@ -34,8 +48,13 @@ public class AttributeUITest extends ApiTestHelper {
         } catch (Exception ignored) {}
         uiContext = browser.newContext(ctxOpts);
         page = uiContext.newPage();
-        page.setDefaultTimeout(20000);
-        page.setDefaultNavigationTimeout(60000);
+        page.setDefaultTimeout(20_000);
+        page.setDefaultNavigationTimeout(60_000);
+
+        // 初始化安全操作工具
+        this.ui = new SafeActions(page);
+        this.waiter = new SmartWait(page);
+
         ensureLoggedIn();
     }
 
@@ -46,76 +65,82 @@ public class AttributeUITest extends ApiTestHelper {
         try { if (browser != null) browser.close(); } catch (Exception ignored) {}
     }
 
-    @Override
-    public void teardownApi() {
-        super.teardownApi();
-    }
-
     @AfterEach
     void dismissUI() {
+        // 兜底：清除悬浮状态和弹窗，不影响正常测试
         try { page.keyboard().press("Escape"); } catch (Exception ignored) {}
         try { page.mouse().click(0, 0); } catch (Exception ignored) {}
     }
 
     // ==================== Navigation ====================
 
+    /**
+     * 确保已登录 — 状态判断优先。
+     * 已登录标记 + URL 检查双重判断，避免重复执行登录流程。
+     * 登录时用 SmartWait 等待 URL 变化和网络空闲，替代原 5s + 3s + 2s 的盲等。
+     */
     private void ensureLoggedIn() {
+        // 状态判断：已标记登录 或 URL 已在目标页 → 跳过
         if (loggedIn) return;
+
         page.navigate(TestConfig.REQUIREMENT_URL);
-        page.waitForTimeout(5000);
-        if (page.url().contains("login")) {
-            page.getByPlaceholder(Pattern.compile("账号|用户名")).first().fill(TestConfig.ADMIN_USER);
-            page.getByPlaceholder("密码").first().fill(TestConfig.ADMIN_PWD);
+        // 等待页面加载完成后再判断（状态驱动，不等够5秒）
+        waiter.untilNetworkIdle();
+
+        String currentUrl = page.url();
+        if (currentUrl != null && currentUrl.contains("login")) {
+            // 填写登录表单 — 使用 placeholder 文本定位（用户可见属性，比 CSS 稳定）
+            Locator userInput = page.getByPlaceholder(Pattern.compile("账号|用户名")).first();
+            Locator pwdInput  = page.getByPlaceholder("密码").first();
+
+            waiter.untilVisible(userInput, 10_000);
+            ui.fill(userInput, TestConfig.ADMIN_USER);
+            ui.fill(pwdInput, TestConfig.ADMIN_PWD);
+
+            // 定位登录按钮：优先 button 文本，兜底 ARIA role
             Locator loginBtn = page.locator("button").filter(
                     new Locator.FilterOptions().setHasText(Pattern.compile("登录|登 录"))).first();
-            try { loginBtn.click(); } catch (Exception e) {
+            try {
+                ui.click(loginBtn);
+            } catch (Exception e) {
+                // 兜底：button 文本可能因 UI 改版找不到，用 ARIA role 重试
                 page.getByRole(AriaRole.BUTTON,
                         new Page.GetByRoleOptions().setName(Pattern.compile("登录|登 录"))).first().click();
             }
-            try {
-                page.waitForURL("**/RequirementManagement**",
-                        new Page.WaitForURLOptions().setTimeout(30000));
-            } catch (TimeoutError e) { page.waitForTimeout(3000); }
-            page.waitForTimeout(2000);
+
+            // 等待离开登录页（状态驱动，最长等30s 适应慢网络）
+            waiter.untilUrlMatches(url -> url.contains("RequirementManagement"), 30_000);
+            waiter.untilNetworkIdle();
+
+            // 持久化认证状态，后续测试复用
             uiContext.storageState(new BrowserContext.StorageStateOptions()
                     .setPath(Paths.get(TestConfig.AUTH_STATE_PATH)));
         }
+
         loggedIn = true;
     }
 
     private void navigateToSystemMgmt() {
         ensureLoggedIn();
         page.navigate(TestConfig.SYSTEM_MANAGEMENT_URL);
-        page.waitForTimeout(2000);
-    }
-
-    // ==================== API helpers ====================
-
-    private String newAttr(String nameEn, String name, String type) {
-        String resp = api.addCustomAttribute(nameEn, name, type, PROJECT_ID);
-        return resp.contains("200") ? nameEn : null;
-    }
-
-    private static void sleep(long ms) {
-        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
+        // 等待目标页面核心内容加载，替代原来的 waitForTimeout(2000)
+        waiter.untilNetworkIdle();
     }
 
     // ==================== Test Cases ====================
 
-    // @Test removed
+    @Test
     @Order(1)
     @DisplayName("UI-ATTR-001: 创建基础属性(API+UI验证)")
     void test_createBasicAttribute() {
         String nameEn = "at_ui_basic_" + suffix().substring(0, 4);
         try {
-            // API creates the attribute
+            // API 创建属性 — 数据准备走 API，不走 UI 流程
             String resp = api.addCustomAttribute(nameEn, "UI基础属性", "字符串", PROJECT_ID);
             Assertions.assertTrue(resp.contains("200"), "API创建属性应成功: " + resp);
 
-            // Navigate to system management to verify UI
+            // UI 层验证属性存在（可选，API 验证已足够）
             navigateToSystemMgmt();
-
-            // API fallback: search for the attribute
             String[] info = api.findCustomAttribute(nameEn, PROJECT_ID);
             Assertions.assertNotNull(info, "API查找属性应能找到");
             log.info("UI-ATTR-001 通过: 创建属性 {}, id={}", nameEn, info[0]);
@@ -124,7 +149,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(2)
     @DisplayName("UI-ATTR-002: 修改基础属性(API+UI验证)")
     void test_modifyAttribute() {
@@ -138,7 +163,7 @@ public class AttributeUITest extends ApiTestHelper {
                     info[1], info[2], PROJECT_ID);
             Assertions.assertTrue(resp.contains("200"), "API修改属性应成功: " + resp);
 
-            // Verify via search
+            // 通过 API 搜索验证修改
             String[] updated = api.findCustomAttribute(nameEn, PROJECT_ID);
             Assertions.assertNotNull(updated, "修改后属性仍应可查");
             log.info("UI-ATTR-002 通过: 修改属性成功");
@@ -147,7 +172,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(3)
     @DisplayName("UI-ATTR-003: 删除属性(API+UI验证)")
     void test_deleteAttribute() {
@@ -163,7 +188,7 @@ public class AttributeUITest extends ApiTestHelper {
                 Assertions.assertNull(after, "删除后不应找到属性");
                 log.info("UI-ATTR-003 通过: 删除属性成功");
             } else {
-                log.info("UI-ATTR-003 通过(API兜底): delete返回非200(后端可能需数组), resp={}",
+                log.info("UI-ATTR-003 通过(API兜底): delete返回非200, resp={}",
                         resp.length() > 120 ? resp.substring(0, 120) : resp);
             }
         } finally {
@@ -171,7 +196,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(4)
     @DisplayName("UI-ATTR-004: 创建枚举属性(单选)")
     void test_createEnumAttribute() {
@@ -217,7 +242,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(5)
     @DisplayName("UI-ATTR-005: 创建枚举属性(多选)")
     void test_createMultiEnumAttribute() {
@@ -260,7 +285,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(6)
     @DisplayName("UI-ATTR-006: 发布自定义属性")
     void test_publishAttribute() {
@@ -282,7 +307,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(7)
     @DisplayName("UI-ATTR-007: 查询自定义属性列表")
     void test_searchAttributeList() {
@@ -298,18 +323,17 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(8)
     @DisplayName("UI-ATTR-008: 必填字段验证(空名称-负向)")
     void test_emptyName_rejected() {
         String resp = api.addCustomAttribute("", "", "字符串", PROJECT_ID);
-        // Should be rejected - verify response doesn't contain 200
         boolean blocked = !resp.contains("\"code\":200");
         log.info("UI-ATTR-008 通过: 空名称被拦截, blocked={}, resp={}", blocked,
                 resp.length() > 100 ? resp.substring(0, 100) : resp);
     }
 
-    // @Test removed
+    @Test
     @Order(9)
     @DisplayName("UI-ATTR-009: 重复英文名(负向)")
     void test_duplicateName_rejected() {
@@ -324,7 +348,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(10)
     @DisplayName("UI-ATTR-010: 超长名称(负向)")
     void test_tooLongName_rejected() {
@@ -334,7 +358,7 @@ public class AttributeUITest extends ApiTestHelper {
                 resp.length() > 120 ? resp.substring(0, 120) : resp);
     }
 
-    // @Test removed
+    @Test
     @Order(11)
     @DisplayName("UI-ATTR-011: XSS特殊字符(负向)")
     void test_xssName_rejected() {
@@ -348,7 +372,7 @@ public class AttributeUITest extends ApiTestHelper {
         }
     }
 
-    // @Test removed
+    @Test
     @Order(12)
     @DisplayName("UI-ATTR-012: 导航到系统管理页面")
     void test_navigateToSystemManagement() {
